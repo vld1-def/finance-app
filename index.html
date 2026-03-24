@@ -2,7 +2,7 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Glass Finance</title>
+    <title>Finance Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,57 +11,43 @@
         :root { --glass: rgba(255, 255, 255, 0.06); --glass-border: rgba(255, 255, 255, 0.1); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
-        
-        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 20px; }
-
-        /* Мінімалістичні юзери */
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 12px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 6px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; border-color: #fff; }
-
-        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid var(--glass-border); }
+        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 8px; border-radius: 10px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
-
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 14px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.2s; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
-
-        /* Складна анімація лоадера в кнопці */
-        .loader { width: 18px; height: 18px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 0.6s linear infinite; }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
+        .loader { width: 14px; height: 14px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.97); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
-
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        input[type="number"] { font-size: 4rem; font-weight: 200; }
     </style>
 </head>
 <body>
     <div class="safe-area">
-        <!-- Картки статистики -->
         <div class="flex gap-2 mb-4 mt-2">
-            <div class="liquid-glass flex-1 p-3 text-center">
-                <p id="tVlad" class="text-lg font-bold text-blue-400">₴0</p>
-                <p class="text-[8px] opacity-30 uppercase font-bold">Влад</p>
+            <div class="liquid-glass flex-1 p-2.5 text-center">
+                <p id="tVlad" class="text-base font-bold text-blue-400">₴0</p>
+                <p class="text-[7px] opacity-30 uppercase font-bold">Влад</p>
             </div>
-            <div class="liquid-glass flex-1 p-3 text-center">
-                <p id="tTania" class="text-lg font-bold text-pink-400">₴0</p>
-                <p class="text-[8px] opacity-30 uppercase font-bold">Таня</p>
+            <div class="liquid-glass flex-1 p-2.5 text-center">
+                <p id="tTania" class="text-base font-bold text-pink-400">₴0</p>
+                <p class="text-[7px] opacity-30 uppercase font-bold">Таня</p>
             </div>
-            <button onclick="toggleDrawer(true)" class="liquid-glass px-5 flex items-center text-xl">📊</button>
+            <button onclick="toggleDrawer(true)" class="liquid-glass px-4 flex items-center text-lg">📊</button>
         </div>
 
-        <!-- Мінімальний вибір юзера -->
-        <div class="flex gap-2 mb-6">
+        <div class="flex gap-2 mb-5">
             <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
             <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
         </div>
 
-        <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-10">
-            <!-- Поле вводу суми -->
-            <input type="number" id="amount" inputmode="decimal" placeholder="0" 
-                   class="w-full bg-transparent text-center outline-none py-2 text-white">
+        <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-6">
+            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-1 text-6xl font-extralight text-white">
 
-            <div class="flex gap-2">
+            <div class="flex gap-2 px-4">
                 <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
                 <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
             </div>
@@ -75,31 +61,27 @@
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
 
-            <!-- Коментар став меншим -->
-            <input type="text" id="comment" placeholder="Коментар..." 
-                   class="w-full bg-white/5 p-3 rounded-xl text-center outline-none border border-white/5 text-white text-xs h-12">
+            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2.5 rounded-xl text-center outline-none border border-white/5 text-white text-[11px] h-10">
 
-            <!-- Мінімалістична кнопка з лоадером всередині -->
-            <button onclick="save()" id="saveBtn" 
-                    class="w-full py-4 rounded-2xl font-bold bg-white text-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+            <button onclick="save()" id="saveBtn" class="w-full py-3.5 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
                 <span id="btnText">ЗБЕРЕГТИ</span>
             </button>
         </div>
     </div>
 
-    <!-- Аналітика -->
     <div id="historyDrawer" class="flex flex-col">
-        <div class="flex justify-between items-center py-6">
-            <h2 class="text-2xl font-black italic uppercase text-white">Аналітика</h2>
-            <button onclick="toggleDrawer(false)" class="text-4xl text-white opacity-40">&times;</button>
+        <div class="flex justify-between items-center py-4">
+            <h2 class="text-xl font-black italic uppercase text-white">Аналітика</h2>
+            <button onclick="toggleDrawer(false)" class="text-3xl text-white opacity-30">&times;</button>
         </div>
-        <div id="hList" class="flex-1 overflow-y-auto space-y-3 pb-20 no-scrollbar"></div>
+        <div id="hList" class="flex-1 overflow-y-auto space-y-2 pb-20 no-scrollbar"></div>
     </div>
 
     <script>
-        // ВСТАВ СВОЄ ПОСИЛАННЯ ТУТ
-        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJkoQYhqqtnxN3QxF-udoY/exec'; 
-        let s = { u: '', c: '', m: 'Карта', d: null };
+        // ТУТ ВСТАВ СВОЄ ПОСИЛАННЯ (те, що закінчується на /exec)
+        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
+        
+        let s = { u: '', c: '', m: 'Карта' };
 
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -119,8 +101,8 @@
             const list = document.getElementById('hList'); list.innerHTML = '';
             data.history.forEach(i => {
                 const card = document.createElement('div');
-                card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-white">₴${i.a}</p></div>`;
+                card.className = 'liquid-glass p-3.5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+                card.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-bold text-xs text-white">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-sm text-white">₴${i.a}</p></div>`;
                 list.appendChild(card);
             });
         }
@@ -129,47 +111,34 @@
             const amtI = document.getElementById('amount');
             const btn = document.getElementById('saveBtn');
             const btnText = document.getElementById('btnText');
-
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
             
-            // Стан завантаження
             btn.disabled = true;
+            const originalColor = btn.className;
             btnText.innerHTML = '<span class="loader"></span>';
 
-            const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
-
             try {
-                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value }) });
                 
-                // Статус Done
                 btnText.innerHTML = 'DONE ✅';
-                btn.classList.replace('bg-white', 'bg-green-500');
-                btn.classList.add('text-white');
+                btn.style.backgroundColor = '#22c55e'; // Зелений
+                btn.style.color = '#fff';
 
                 setTimeout(() => {
-                    // Очистка та скидання кнопки
                     amtI.value = '';
                     document.getElementById('comment').value = '';
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-                    
                     btn.disabled = false;
                     btnText.innerHTML = 'ЗБЕРЕГТИ';
-                    btn.classList.replace('bg-green-500', 'bg-white');
-                    btn.classList.remove('text-white');
-
-                    loadData(); // Оновлення даних
-                }, 1500);
-
-            } catch (e) {
-                alert("Помилка");
-                btn.disabled = false;
-                btnText.innerHTML = 'ЗБЕРЕГТИ';
-            }
+                    btn.style.backgroundColor = '#fff';
+                    btn.style.color = '#000';
+                    loadData(); 
+                }, 1000);
+            } catch (e) { alert("Error"); btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ'; }
         }
 
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
         document.addEventListener('touchend', e => { let d = ts - e.changedTouches[0].screenX; if (d > 80) toggleDrawer(true); if (d < -80) toggleDrawer(false); });
-        
         window.onload = loadData;
     </script>
 </body>
