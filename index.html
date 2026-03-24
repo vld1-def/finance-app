@@ -2,25 +2,25 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Glass Pro</title>
+    <title>Glass Finance Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.06); --glass-border: rgba(255, 255, 255, 0.1); }
+        :root { --glass: rgba(255, 255, 255, 0.07); --glass-border: rgba(255, 255, 255, 0.12); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
-        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 6px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
+        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 20px; }
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; }
-        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 8px; border-radius: 10px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
+        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 10px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
+        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
         .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .stat-chip { min-width: 105px; padding: 8px; background: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); }
@@ -31,25 +31,24 @@
 <body>
     <div class="safe-area">
         <div class="flex gap-2 mb-4 mt-2">
-            <div class="liquid-glass flex-1 p-2 text-center">
+            <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tVlad" class="text-base font-bold text-blue-400">₴0</p>
                 <p class="text-[7px] opacity-30 uppercase font-bold text-white">Влад</p>
             </div>
-            <div class="liquid-glass flex-1 p-2 text-center">
+            <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tTania" class="text-base font-bold text-pink-400">₴0</p>
                 <p class="text-[7px] opacity-30 uppercase font-bold text-white">Таня</p>
             </div>
             <button onclick="toggleDrawer(true)" class="liquid-glass px-4 flex items-center text-lg">📊</button>
         </div>
 
-        <div class="flex gap-2 mb-4">
+        <div class="flex gap-2 mb-5">
             <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
             <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
         </div>
 
         <div class="flex-1 space-y-3 overflow-y-auto no-scrollbar pb-6">
-            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-0 text-5xl font-extralight text-white">
-
+            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-1 text-5xl font-extralight text-white">
             <div class="flex gap-2 px-6">
                 <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
                 <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
@@ -58,7 +57,6 @@
                     <input type="file" id="pInp" accept="image/*" capture="environment" class="hidden" onchange="hPh(this)">
                 </label>
             </div>
-
             <div class="grid grid-cols-2 gap-2">
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
                 <div onclick="setCat('☕️ Кафе/Їжа', this)" class="cat-card">☕️ Кафе</div>
@@ -67,10 +65,8 @@
                 <div onclick="setCat('🎬 Розваги', this)" class="cat-card">🎬 Розваги</div>
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
-
-            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-9">
-
-            <button onclick="save()" id="saveBtn" class="w-full py-3 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
+            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2.5 rounded-xl text-center outline-none border border-white/5 text-white text-[11px] h-9">
+            <button onclick="save()" id="saveBtn" class="w-full py-3.5 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
                 <span id="btnText">ЗБЕРЕГТИ</span>
             </button>
         </div>
@@ -124,7 +120,6 @@
             const script = document.createElement('script');
             script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
             document.body.appendChild(script);
-            script.onload = () => script.remove();
         }
 
         function refreshUI(data) {
@@ -142,7 +137,7 @@
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c} ${i.p ? '📸' : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><div class="text-right"><p class="font-bold text-xs">₴${i.a}</p>${i.p ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline uppercase">Чек</a>` : ''}</div></div>`;
+                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c} ${i.p ? '📸' : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><div class="text-right"><p class="font-bold text-xs">₴${i.a}</p>${i.p.startsWith('http') ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline uppercase">Чек</a>` : ''}</div></div>`;
                 list.appendChild(card);
             });
             const grid = document.getElementById('catGrid'); grid.innerHTML = '';
@@ -162,13 +157,10 @@
             const btn = document.getElementById('saveBtn');
             const btnText = document.getElementById('btnText');
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
-            
             btn.disabled = true; btnText.innerHTML = '<span class="loader"></span>';
 
-            const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value, photoData: s.ph };
-
             try {
-                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value, photoData: s.ph }) });
                 btnText.innerHTML = 'DONE ✅';
                 btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
                 setTimeout(() => {
@@ -179,7 +171,7 @@
                     btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
                     loadData(); 
                 }, 1000);
-            } catch (e) { alert("Error"); btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ'; }
+            } catch (e) { alert("Error"); btn.disabled = false; }
         }
 
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
