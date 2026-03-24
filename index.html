@@ -11,20 +11,19 @@
         :root { --glass: rgba(255, 255, 255, 0.06); --glass-border: rgba(255, 255, 255, 0.1); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
-        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
+        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
         .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 6px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; }
-        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 8px; border-radius: 10px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
+        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
         .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
-        .loader { width: 14px; height: 14px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
-        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
-        #historyDrawer.open { right: 0; }
-        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .stat-chip { min-width: 110px; padding: 10px; background: var(--glass); border-radius: 14px; border: 1px solid var(--glass-border); }
         .stat-chip.selected { background: #6366f1; border-color: #fff; }
+        .loader { width: 14px; height: 14px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
+        #historyDrawer.open { right: 0; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -53,7 +52,7 @@
             <div class="flex gap-2 px-1">
                 <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
                 <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
-                <label class="method-btn flex items-center justify-center cursor-pointer overflow-hidden">
+                <label class="method-btn flex items-center justify-center cursor-pointer">
                     <span id="pStatus">📸 ФОТО</span>
                     <input type="file" id="pInp" accept="image/*" capture="environment" class="hidden" onchange="hPh(this)">
                 </label>
@@ -82,7 +81,7 @@
             <button onclick="toggleDrawer(false)" class="text-3xl text-white opacity-30">&times;</button>
         </div>
         <div class="mb-4">
-            <div id="catGrid" class="cat-grid-stats no-scrollbar px-1"></div>
+            <div id="catGrid" class="flex gap-2 overflow-x-auto no-scrollbar px-1"></div>
         </div>
         <div class="flex gap-2 mb-4">
             <button id="fAll" onclick="fH('All', this)" class="btn-user active">Всі</button>
@@ -93,10 +92,9 @@
     </div>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJkoQYhqqtnxN3QxF-udoY/exec'; 
         let s = { u: '', c: '', m: 'Карта', ph: '', d: null, uF: 'All', cF: null };
 
-        // СТИСКАННЯ ФОТО (Клієнтська частина)
         function hPh(i) {
             if (i.files && i.files[0]) {
                 document.getElementById('pStatus').innerText = '⏳...';
@@ -105,13 +103,13 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX = 800; // Макс ширина
+                        const MAX = 800;
                         let w = img.width, h = img.height;
                         if (w > h) { if (w > MAX) { h *= MAX/w; w = MAX; } }
                         else { if (h > MAX) { w *= MAX/h; h = MAX; } }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        s.ph = canvas.toDataURL('image/jpeg', 0.6); // 60% якості
+                        s.ph = canvas.toDataURL('image/jpeg', 0.6);
                         document.getElementById('pStatus').innerText = '✅ OK';
                     };
                     img.src = e.target.result;
@@ -147,18 +145,8 @@
                 if(s.uF !== 'All' && i.u !== s.uF) return;
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
-                card.className = 'liquid-glass p-3.5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="font-bold text-[11px] text-white">${i.c} ${i.p ? '📸' : ''}</p>
-                            <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-bold text-xs text-white">₴${i.a}</p>
-                            ${i.p ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline">ЧЕК</a>` : ''}
-                        </div>
-                    </div>`;
+                card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+                card.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-bold text-[11px] text-white">${i.c} ${i.p.startsWith('http') ? '📸' : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><div class="text-right"><p class="font-bold text-xs text-white">₴${i.a}</p>${i.p.startsWith('http') ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline uppercase">Чек</a>` : ''}</div></div>`;
                 list.appendChild(card);
             });
 
@@ -182,10 +170,9 @@
             
             btn.disabled = true; btnText.innerHTML = '<span class="loader"></span>';
 
-            const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value, photoData: s.ph };
-
             try {
-                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value, photoData: s.ph }) });
+                
                 btnText.innerHTML = 'DONE ✅';
                 btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
 
@@ -199,6 +186,14 @@
                 }, 1000);
             } catch (e) { alert("Error"); btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ'; }
         }
+
+        // SWIPE LOGIC
+        let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
+        document.addEventListener('touchend', e => { 
+            let d = ts - e.changedTouches[0].screenX;
+            if (d > 70) toggleDrawer(true);
+            if (d < -70) toggleDrawer(false);
+        });
 
         window.onload = loadData;
     </script>
