@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
     <title>Glass Finance</title>
@@ -10,18 +10,16 @@
     <style>
         :root { --glass: rgba(255, 255, 255, 0.07); --glass-border: rgba(255, 255, 255, 0.12); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
-        .safe-area { padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; display: flex; flex-direction: column; height: 100%; }
+        .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
         .liquid-glass { background: var(--glass); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid var(--glass-border); border-radius: 26px; }
         .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.3; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1); padding: 14px 0; flex: 1; text-align: center; font-weight: 700; border-radius: 18px; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; transform: scale(1.05); }
         .method-btn { background: var(--glass); opacity: 0.4; flex: 1; padding: 12px; border-radius: 14px; font-size: 11px; font-weight: 800; border: 1px solid var(--glass-border); text-transform: uppercase; }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.15); }
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; }
         #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
-        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
-        #successOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
         @keyframes flyAway { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
         .fly { animation: flyAway 0.6s forwards; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -29,6 +27,7 @@
 </head>
 <body>
     <div class="safe-area">
+        <!-- Статистика -->
         <div class="flex gap-2 mb-6 mt-4">
             <div class="liquid-glass flex-1 p-4 text-center">
                 <p id="tVlad" class="text-xl font-bold text-blue-400">₴0</p>
@@ -41,6 +40,7 @@
             <button onclick="toggleDrawer(true)" class="liquid-glass px-6 text-2xl flex items-center">📊</button>
         </div>
 
+        <!-- Вибір юзера -->
         <div class="flex gap-3 mb-8">
             <div onclick="setUser('Влад', this)" class="btn-user">ВЛАД</div>
             <div onclick="setUser('Таня', this)" class="btn-user">ТАНЯ</div>
@@ -69,92 +69,108 @@
         </div>
     </div>
 
+    <!-- Панель історії -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-6">
             <h2 class="text-3xl font-black italic uppercase">Історія</h2>
-            <button onclick="toggleDrawer(false)" class="text-4xl opacity-50">&times;</button>
+            <button onclick="toggleDrawer(false)" class="text-4xl opacity-50 text-white">&times;</button>
         </div>
         <div id="hList" class="flex-1 overflow-y-auto space-y-3 pb-20 no-scrollbar"></div>
     </div>
 
-    <div id="successOverlay"><div class="text-center"><div class="text-8xl mb-4">✅</div><p class="font-black text-2xl uppercase">Done</p></div></div>
+    <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:100; align-items:center; justify-content:center;">
+        <div class="text-center"><div class="text-8xl mb-4">✅</div><p class="font-black text-2xl uppercase text-white">Done</p></div>
+    </div>
 
     <script>
+        // === НАЛАШТУВАННЯ ===
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec';
         let s = { u: '', c: '', m: 'Карта', d: null };
 
-// ФУНКЦІЯ ДЛЯ ЧИТАННЯ (JSONP)
-function loadData() {
-    // Видаляємо старий скрипт, якщо він був
-    const oldScript = document.getElementById('jsonp-data');
-    if (oldScript) oldScript.remove();
+        // === ФУНКЦІЇ КНОПОК ===
+        function setUser(n, el) {
+            s.u = n;
+            document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
 
-    // Створюємо новий запит через тег script
-    const script = document.createElement('script');
-    script.id = 'jsonp-data';
-    // Додаємо ?callback=refreshUI до посилання
-    script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
-    document.body.appendChild(script);
-}
+        function setCat(n, el) {
+            s.c = n;
+            document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
 
-// Ця функція викличеться автоматично, коли Google "віддасть" дані
-function refreshUI(data) {
-    s.d = data;
-    document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
-    document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
-    
-    const list = document.getElementById('hList'); 
-    list.innerHTML = '';
-    data.history.forEach(i => {
-        const card = document.createElement('div');
-        card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-        card.innerHTML = `<div class="flex justify-between items-start mb-2"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>`;
-        list.appendChild(card);
-    });
-}
+        function setMethod(m, el) {
+            s.m = m;
+            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+        }
 
-// ФУНКЦІЯ ДЛЯ ЗАПИСУ
-async function save() {
-    const amtI = document.getElementById('amount');
-    if(!s.u || !s.c || !amtI.value) return alert('Заповни Хто, Категорію та Суму!');
-    
-    const btn = document.getElementById('saveBtn'); 
-    btn.disabled = true; 
-    amtI.classList.add('fly');
+        function toggleDrawer(o) {
+            document.getElementById('historyDrawer').classList.toggle('open', o);
+        }
 
-    const payload = {
-        user: s.u,
-        category: s.c,
-        amount: amtI.value,
-        method: s.m,
-        comment: document.getElementById('comment').value
-    };
+        // === РОБОТА З ДАНИМИ (JSONP) ===
+        function loadData() {
+            const oldScript = document.getElementById('jsonp-data');
+            if (oldScript) oldScript.remove();
+            const script = document.createElement('script');
+            script.id = 'jsonp-data';
+            script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
+            document.body.appendChild(script);
+        }
 
-    try {
-        await fetch(API_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
+        function refreshUI(data) {
+            document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
+            document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
+            const list = document.getElementById('hList'); 
+            list.innerHTML = '';
+            data.history.forEach(i => {
+                const card = document.createElement('div');
+                card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>`;
+                list.appendChild(card);
+            });
+        }
+
+        async function save() {
+            const amtI = document.getElementById('amount');
+            if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
+            const btn = document.getElementById('saveBtn'); btn.disabled = true;
+            amtI.classList.add('fly');
+
+            const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+
+                document.getElementById('successOverlay').style.display = 'flex';
+                setTimeout(() => {
+                    document.getElementById('successOverlay').style.display = 'none';
+                    amtI.value = '';
+                    document.getElementById('comment').value = '';
+                    document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
+                    amtI.classList.remove('fly');
+                    btn.disabled = false;
+                    loadData(); 
+                }, 1200);
+            } catch (e) { alert("Помилка"); btn.disabled = false; }
+        }
+
+        // SWIPE
+        let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
+        document.addEventListener('touchend', e => { 
+            let d = ts - e.changedTouches[0].screenX;
+            if (d > 80) toggleDrawer(true);
+            if (d < -80) toggleDrawer(false);
         });
 
-        document.getElementById('successOverlay').style.display = 'flex';
-        
-        setTimeout(() => {
-            document.getElementById('successOverlay').style.display = 'none';
-            amtI.value = '';
-            document.getElementById('comment').value = '';
-            amtI.classList.remove('fly');
-            btn.disabled = false;
-            loadData(); // Оновлюємо дані через JSONP
-        }, 1200);
-    } catch (e) {
-        alert("Помилка запису");
-        btn.disabled = false;
-    }
-}
-
-window.onload = loadData;
+        window.onload = loadData;
     </script>
 </body>
 </html>
