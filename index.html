@@ -12,22 +12,16 @@
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
         .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
-        
         .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 6px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; }
-
         .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 8px; border-radius: 10px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
-
         .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 10px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
-
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
-        
         .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .stat-chip { min-width: 105px; padding: 8px; background: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); }
         .stat-chip.selected { background: #6366f1; border-color: #fff; }
@@ -54,7 +48,6 @@
         </div>
 
         <div class="flex-1 space-y-3 overflow-y-auto no-scrollbar pb-6">
-            <!-- Зменшене поле суми -->
             <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-0 text-5xl font-extralight text-white">
 
             <div class="flex gap-2 px-6">
@@ -75,7 +68,6 @@
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
 
-            <!-- Компактний коментар -->
             <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-9">
 
             <button onclick="save()" id="saveBtn" class="w-full py-3 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
@@ -84,11 +76,10 @@
         </div>
     </div>
 
-    <!-- Аналітика -->
     <div id="historyDrawer" class="flex flex-col">
-        <div class="flex justify-between items-center py-4">
-            <h2 class="text-xl font-black italic uppercase text-white">Аналітика</h2>
-            <button onclick="toggleDrawer(false)" class="text-3xl text-white opacity-30">&times;</button>
+        <div class="flex justify-between items-center py-4 text-white">
+            <h2 class="text-xl font-black italic uppercase">Аналітика</h2>
+            <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
         <div class="mb-4"><div id="catGrid" class="cat-grid-stats no-scrollbar px-1"></div></div>
         <div class="flex gap-2 mb-4">
@@ -100,9 +91,7 @@
     </div>
 
     <script>
-        // !!! ОБОВ'ЯЗКОВО: Встав своє посилання /exec сюди !!!
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
-        
         let s = { u: '', c: '', m: 'Карта', ph: '', d: null, uF: 'All', cF: null };
 
         function hPh(i) {
@@ -112,10 +101,8 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX = 800;
-                        let w = img.width, h = img.height;
-                        if (w > h) { if (w > MAX) { h *= MAX/w; w = MAX; } }
-                        else { if (h > MAX) { w *= MAX/h; h = MAX; } }
+                        const MAX = 800; let w = img.width, h = img.height;
+                        if (w > h) { if (w > MAX) { h *= MAX/w; w = MAX; } } else { if (h > MAX) { w *= MAX/h; h = MAX; } }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                         s.ph = canvas.toDataURL('image/jpeg', 0.6);
@@ -155,7 +142,7 @@
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-bold text-[11px] text-white">${i.c} ${i.p ? '📸' : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><div class="text-right"><p class="font-bold text-xs text-white">₴${i.a}</p>${i.p.startsWith('http') ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline">ЧЕК</a>` : ''}</div></div>`;
+                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c} ${i.p ? '📸' : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><div class="text-right"><p class="font-bold text-xs">₴${i.a}</p>${i.p ? `<a href="${i.p}" target="_blank" class="text-[7px] text-blue-400 underline uppercase">Чек</a>` : ''}</div></div>`;
                 list.appendChild(card);
             });
             const grid = document.getElementById('catGrid'); grid.innerHTML = '';
@@ -165,7 +152,7 @@
                 const div = document.createElement('div');
                 div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
                 div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
-                div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold">${name}</p><p class="font-black text-xs text-white">₴${val.toLocaleString()}</p>`;
+                div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${val.toLocaleString()}</p>`;
                 grid.appendChild(div);
             }
         }
@@ -176,20 +163,17 @@
             const btnText = document.getElementById('btnText');
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
             
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="loader"></span>';
+            btn.disabled = true; btnText.innerHTML = '<span class="loader"></span>';
 
             const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value, photoData: s.ph };
 
             try {
                 await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-                
                 btnText.innerHTML = 'DONE ✅';
                 btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
-
                 setTimeout(() => {
-                    amtI.value = ''; document.getElementById('comment').value = '';
-                    s.ph = ''; document.getElementById('pStatus').innerText = '📸 ФОТО';
+                    amtI.value = ''; document.getElementById('comment').value = ''; s.ph = '';
+                    document.getElementById('pStatus').innerText = '📸 ФОТО';
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
                     btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
                     btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
