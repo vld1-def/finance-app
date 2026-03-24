@@ -2,24 +2,44 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Glass Finance</title>
+    <title>Glass Finance Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.07); --glass-border: rgba(255, 255, 255, 0.12); }
+        :root { --glass: rgba(255, 255, 255, 0.08); --glass-border: rgba(255, 255, 255, 0.12); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
-        .liquid-glass { background: var(--glass); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid var(--glass-border); border-radius: 26px; }
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.3; transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1); padding: 14px 0; flex: 1; text-align: center; font-weight: 700; border-radius: 18px; }
+        
+        .liquid-glass {
+            background: var(--glass);
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border); border-radius: 26px;
+        }
+
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.3; transition: 0.3s; padding: 14px 0; flex: 1; text-align: center; font-weight: 700; border-radius: 18px; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; transform: scale(1.05); }
+
         .method-btn { background: var(--glass); opacity: 0.4; flex: 1; padding: 12px; border-radius: 14px; font-size: 11px; font-weight: 800; border: 1px solid var(--glass-border); text-transform: uppercase; }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.15); }
+
         .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; }
-        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.95); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
+
+        #historyDrawer { 
+            position: fixed; top: 0; right: -100%; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.96); backdrop-filter: blur(40px);
+            transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; 
+            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
+        }
         #historyDrawer.open { right: 0; }
+
+        /* Аналітика в 2 рядки */
+        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
+        .stat-chip { min-width: 125px; padding: 14px; background: var(--glass); border-radius: 20px; border: 1px solid var(--glass-border); transition: 0.2s; }
+        .stat-chip.selected { background: #6366f1; border-color: #fff; }
+
         @keyframes flyAway { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
         .fly { animation: flyAway 0.6s forwards; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -27,8 +47,8 @@
 </head>
 <body>
     <div class="safe-area">
-        <!-- Статистика -->
-        <div class="flex gap-2 mb-6 mt-4">
+        <!-- Статистика в хедері -->
+        <div class="flex gap-2 mb-6 mt-2">
             <div class="liquid-glass flex-1 p-4 text-center">
                 <p id="tVlad" class="text-xl font-bold text-blue-400">₴0</p>
                 <p class="text-[8px] opacity-40 uppercase tracking-[0.2em] font-bold">Влад</p>
@@ -69,12 +89,26 @@
         </div>
     </div>
 
-    <!-- Панель історії -->
+    <!-- Аналітика Drawer -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-6">
-            <h2 class="text-3xl font-black italic uppercase">Історія</h2>
-            <button onclick="toggleDrawer(false)" class="text-4xl opacity-50 text-white">&times;</button>
+            <h2 class="text-3xl font-black italic uppercase tracking-tighter text-white">Аналітика</h2>
+            <button onclick="toggleDrawer(false)" class="text-4xl text-white">&times;</button>
         </div>
+
+        <!-- Категорії (2 рядки) -->
+        <div class="mb-6">
+            <p class="text-[9px] uppercase opacity-40 mb-3 tracking-widest font-bold">По категоріям</p>
+            <div id="catGrid" class="cat-grid-stats no-scrollbar"></div>
+        </div>
+
+        <!-- Фільтр юзерів -->
+        <div class="flex gap-2 mb-6">
+            <button id="fAll" onclick="fH('All', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold bg-white text-black rounded-full uppercase">Всі</button>
+            <button id="fVlad" onclick="fH('Влад', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold rounded-full uppercase">Влад</button>
+            <button id="fTania" onclick="fH('Таня', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold rounded-full uppercase">Таня</button>
+        </div>
+
         <div id="hList" class="flex-1 overflow-y-auto space-y-3 pb-20 no-scrollbar"></div>
     </div>
 
@@ -83,54 +117,57 @@
     </div>
 
     <script>
-        // === НАЛАШТУВАННЯ ===
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec';
-        let s = { u: '', c: '', m: 'Карта', d: null };
+        let s = { u: '', c: '', m: 'Карта', d: null, uF: 'All', cF: null };
 
-        // === ФУНКЦІЇ КНОПОК ===
-        function setUser(n, el) {
-            s.u = n;
-            document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
+        // КНОПКИ
+        function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        function setMethod(m, el) { s.m = m; document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
+        function fH(u, el) { 
+            s.uF = u; 
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('bg-white', 'text-black')); 
+            el.classList.add('bg-white', 'text-black'); 
+            render(); 
         }
 
-        function setCat(n, el) {
-            s.c = n;
-            document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
-        }
-
-        function setMethod(m, el) {
-            s.m = m;
-            document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
-        }
-
-        function toggleDrawer(o) {
-            document.getElementById('historyDrawer').classList.toggle('open', o);
-        }
-
-        // === РОБОТА З ДАНИМИ (JSONP) ===
+        // ДАНІ (JSONP)
         function loadData() {
-            const oldScript = document.getElementById('jsonp-data');
-            if (oldScript) oldScript.remove();
             const script = document.createElement('script');
-            script.id = 'jsonp-data';
             script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
             document.body.appendChild(script);
+            script.onload = () => script.remove();
         }
 
         function refreshUI(data) {
+            s.d = data;
             document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
             document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
-            const list = document.getElementById('hList'); 
-            list.innerHTML = '';
-            data.history.forEach(i => {
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('hList'); list.innerHTML = '';
+            s.d.history.forEach(i => {
+                if(s.uF !== 'All' && i.u !== s.uF) return;
+                if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>`;
+                card.innerHTML = `<div class="flex justify-between items-start mb-2"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>${i.cm ? `<p class="text-xs italic opacity-60 bg-white/5 p-2 rounded-lg border-l-2 border-indigo-500 mt-2">${i.cm}</p>` : ''}`;
                 list.appendChild(card);
             });
+
+            const grid = document.getElementById('catGrid'); grid.innerHTML = '';
+            for (let name in s.d.catStats) {
+                let val = s.uF === 'All' ? s.d.catStats[name].total : (s.uF === 'Влад' ? s.d.catStats[name].vlad : s.d.catStats[name].tania);
+                if (val <= 0) continue;
+                const div = document.createElement('div');
+                div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
+                div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
+                div.innerHTML = `<p class="text-[9px] opacity-50 truncate uppercase font-bold tracking-tighter">${name}</p><p class="font-black text-base text-white">₴${val.toLocaleString()}</p>`;
+                grid.appendChild(div);
+            }
         }
 
         async function save() {
@@ -142,21 +179,13 @@
             const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
 
             try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-
+                await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
                 document.getElementById('successOverlay').style.display = 'flex';
                 setTimeout(() => {
                     document.getElementById('successOverlay').style.display = 'none';
-                    amtI.value = '';
-                    document.getElementById('comment').value = '';
+                    amtI.value = ''; document.getElementById('comment').value = '';
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-                    amtI.classList.remove('fly');
-                    btn.disabled = false;
+                    amtI.classList.remove('fly'); btn.disabled = false;
                     loadData(); 
                 }, 1200);
             } catch (e) { alert("Помилка"); btn.disabled = false; }
