@@ -2,7 +2,7 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Glass</title>
+    <title>Finance Glass Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -13,24 +13,25 @@
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; background: #000; }
         .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 7px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; }
         .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
         .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
+        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
+        #historyDrawer.open { right: 0; }
+        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .stat-chip { min-width: 105px; padding: 10px; background: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); }
         .stat-chip.selected { background: #6366f1; border-color: #fff; }
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
-        #historyDrawer.open { right: 0; }
-        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body>
     <div class="safe-area">
+        <!-- Header -->
         <div class="flex gap-2 mb-4 mt-2">
             <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tVlad" class="text-base font-bold text-blue-400">₴0</p>
@@ -51,8 +52,8 @@
         <div class="flex-1 space-y-3 overflow-y-auto no-scrollbar pb-6">
             <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-0 text-6xl font-extralight text-white">
             <div class="flex gap-2 px-8">
-                <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
-                <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
+                <button onclick="setMethod('💳 Карта', this)" class="method-btn active">💳 Карта</button>
+                <button onclick="setMethod('💵 Готівка', this)" class="method-btn">💵 Готівка</button>
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
@@ -62,30 +63,48 @@
                 <div onclick="setCat('🎬 Розваги', this)" class="cat-card">🎬 Розваги</div>
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
-            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-10">
+            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-9">
             <button onclick="save()" id="saveBtn" class="w-full py-4 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
                 <span id="btnText">ЗБЕРЕГТИ</span>
             </button>
         </div>
     </div>
 
+    <!-- Analytics Drawer -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-4 text-white">
             <h2 class="text-xl font-black italic uppercase">Аналітика</h2>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
-        <div class="mb-4"><div id="catGrid" class="cat-grid-stats no-scrollbar px-1"></div></div>
+
+        <!-- ГРУПУВАННЯ ЗА МЕТОДОМ ОПЛАТИ -->
+        <div class="flex gap-2 mb-4">
+            <div class="liquid-glass flex-1 p-3 text-center border-white/5">
+                <p class="text-[7px] opacity-40 uppercase font-bold mb-1">💳 Карта</p>
+                <p id="statCard" class="text-sm font-bold">₴0</p>
+            </div>
+            <div class="liquid-glass flex-1 p-3 text-center border-white/5">
+                <p class="text-[7px] opacity-40 uppercase font-bold mb-1">💵 Готівка</p>
+                <p id="statCash" class="text-sm font-bold">₴0</p>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <p class="text-[8px] opacity-40 mb-2 tracking-widest uppercase font-bold">По категоріям</p>
+            <div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div>
+        </div>
+
         <div class="flex gap-2 mb-4">
             <button id="fAll" onclick="fH('All', this)" class="btn-user active">Всі</button>
             <button id="fVlad" onclick="fH('Влад', this)" class="btn-user">Влад</button>
             <button id="fTania" onclick="fH('Таня', this)" class="btn-user">Таня</button>
         </div>
-        <div id="hList" class="flex-1 overflow-y-auto space-y-2 pb-20 no-scrollbar text-white"></div>
+        <div id="hList" class="flex-1 overflow-y-auto space-y-2 pb-20 no-scrollbar"></div>
     </div>
 
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
-        let s = { u: '', c: '', m: 'Карта', d: null, uF: 'All', cF: null };
+        let s = { u: '', c: '', m: '💳 Карта', d: null, uF: 'All', cF: null };
 
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -95,7 +114,6 @@
 
         function loadData(isRefresh = false) {
             const script = document.createElement('script');
-            // Параметр refresh=true змушує скрипт ігнорувати кеш
             script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}${isRefresh ? '&refresh=true' : ''}`; 
             document.body.appendChild(script);
         }
@@ -109,15 +127,30 @@
 
         function render() {
             if(!s.d) return;
+
+            // Оновлення Карта / Готівка
+            let cardSum = 0, cashSum = 0;
+            if (s.uF === 'All') {
+                cardSum = s.d.stats.card;
+                cashSum = s.d.stats.cash;
+            } else {
+                const key = s.uF === 'Влад' ? 'vlad' : 'tania';
+                cardSum = s.d.methodStats[key].card;
+                cashSum = s.d.methodStats[key].cash;
+            }
+            document.getElementById('statCard').innerText = '₴' + cardSum.toLocaleString();
+            document.getElementById('statCash').innerText = '₴' + cashSum.toLocaleString();
+
             const list = document.getElementById('hList'); list.innerHTML = '';
             s.d.history.forEach(i => {
                 if(s.uF !== 'All' && i.u !== s.uF) return;
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
-                card.className = 'liquid-glass p-3.5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>`;
+                card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>`;
                 list.appendChild(card);
             });
+
             const grid = document.getElementById('catGrid'); grid.innerHTML = '';
             for (let name in s.d.catStats) {
                 let val = s.uF === 'All' ? s.d.catStats[name].total : (s.uF === 'Влад' ? s.d.catStats[name].vlad : s.d.catStats[name].tania);
@@ -137,10 +170,9 @@
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
             btn.disabled = true; btnText.innerHTML = '<span class="loader"></span>';
             const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
-
             try {
                 await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-                confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
+                confetti({ particleCount: 60, spread: 50, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
                 btnText.innerHTML = 'DONE ✅';
                 btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
                 setTimeout(() => {
@@ -148,7 +180,7 @@
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
                     btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
                     btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
-                    loadData(true); // Форсуємо оновлення даних
+                    loadData(true); 
                 }, 1000);
             } catch (e) { alert("Error"); btn.disabled = false; }
         }
@@ -157,7 +189,7 @@
         document.addEventListener('touchend', e => { 
             let d = ts - e.changedTouches[0].screenX;
             if (d > 70) toggleDrawer(true);
-            if (d < -70) toggleDrawer(false);
+            if (d < -80) toggleDrawer(false);
         });
 
         window.onload = () => loadData();
