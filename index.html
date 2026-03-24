@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Glass Finance AI</title>
+    <title>Finance Glass</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -10,40 +10,20 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
         :root { --glass: rgba(255, 255, 255, 0.07); --glass-border: rgba(255, 255, 255, 0.1); }
-        
-        /* ДИНАМІЧНИЙ ГРАДІЄНТ */
-        body { 
-            margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; 
-            font-family: -apple-system, sans-serif; position: fixed;
-            background: linear-gradient(-45deg, #000000, #130f40, #000000, #1e1b4b);
-            background-size: 400% 400%;
-            animation: gradientBG 15s ease infinite;
-        }
-        @keyframes gradientBG {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
-        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 20px; }
-        
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 12px; text-transform: uppercase; }
-        .btn-user.active { opacity: 1; background: #fff; color: #000; box-shadow: 0 0 15px rgba(255,255,255,0.2); }
-
+        html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
+        .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; background: #000; }
+        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 7px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
+        .btn-user.active { opacity: 1; background: #fff; color: #000; }
         .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 9px; font-weight: 700; border: 1px solid var(--glass-border); }
         .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
-
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 11px; transition: 0.2s; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 14px; display: flex; align-items: center; gap: 6px; font-size: 11px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
-
         .stat-chip { min-width: 105px; padding: 10px; background: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); }
         .stat-chip.selected { background: #6366f1; border-color: #fff; }
-
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.9); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
+        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
         .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -54,28 +34,26 @@
         <div class="flex gap-2 mb-4 mt-2">
             <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tVlad" class="text-base font-bold text-blue-400">₴0</p>
-                <p class="text-[7px] opacity-40 uppercase font-bold text-white">Влад</p>
+                <p class="text-[7px] opacity-30 uppercase font-bold text-white">Влад</p>
             </div>
             <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tTania" class="text-base font-bold text-pink-400">₴0</p>
-                <p class="text-[7px] opacity-40 uppercase font-bold text-white">Таня</p>
+                <p class="text-[7px] opacity-30 uppercase font-bold text-white">Таня</p>
             </div>
             <button onclick="toggleDrawer(true)" class="liquid-glass px-4 flex items-center text-lg">📊</button>
         </div>
 
-        <div class="flex gap-2 mb-4">
+        <div class="flex gap-2 mb-5">
             <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
             <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
         </div>
 
         <div class="flex-1 space-y-3 overflow-y-auto no-scrollbar pb-6">
-            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-0 text-5xl font-extralight text-white">
-
-            <div class="flex gap-2 px-6">
+            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-0 text-6xl font-extralight text-white">
+            <div class="flex gap-2 px-8">
                 <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
                 <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
             </div>
-
             <div class="grid grid-cols-2 gap-2">
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
                 <div onclick="setCat('☕️ Кафе/Їжа', this)" class="cat-card">☕️ Кафе</div>
@@ -84,9 +62,7 @@
                 <div onclick="setCat('🎬 Розваги', this)" class="cat-card">🎬 Розваги</div>
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
-
-            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-9">
-
+            <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-2 rounded-xl text-center outline-none border border-white/5 text-white text-[10px] h-10">
             <button onclick="save()" id="saveBtn" class="w-full py-4 rounded-xl font-bold bg-white text-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 transition-all">
                 <span id="btnText">ЗБЕРЕГТИ</span>
             </button>
@@ -98,17 +74,16 @@
             <h2 class="text-xl font-black italic uppercase">Аналітика</h2>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
-        <div class="mb-4"><div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div></div>
+        <div class="mb-4"><div id="catGrid" class="cat-grid-stats no-scrollbar px-1"></div></div>
         <div class="flex gap-2 mb-4">
             <button id="fAll" onclick="fH('All', this)" class="btn-user active">Всі</button>
             <button id="fVlad" onclick="fH('Влад', this)" class="btn-user">Влад</button>
             <button id="fTania" onclick="fH('Таня', this)" class="btn-user">Таня</button>
         </div>
-        <div id="hList" class="flex-1 overflow-y-auto space-y-2 pb-20 no-scrollbar"></div>
+        <div id="hList" class="flex-1 overflow-y-auto space-y-2 pb-20 no-scrollbar text-white"></div>
     </div>
 
     <script>
-        // ВСТАВ СВОЄ ПОСИЛАННЯ ТУТ
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
         let s = { u: '', c: '', m: 'Карта', d: null, uF: 'All', cF: null };
 
@@ -118,16 +93,14 @@
         function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
         function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
 
-        function loadData() {
+        function loadData(isRefresh = false) {
             const script = document.createElement('script');
-            // Додаємо Timestamp щоб обійти кеш браузера
-            script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
+            // Параметр refresh=true змушує скрипт ігнорувати кеш
+            script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}${isRefresh ? '&refresh=true' : ''}`; 
             document.body.appendChild(script);
-            script.onload = () => script.remove();
         }
 
         function refreshUI(data) {
-            if(!data) return;
             s.d = data;
             document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
             document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
@@ -142,7 +115,7 @@
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-3.5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>`;
+                card.innerHTML = `<div class="flex justify-between items-center"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>`;
                 list.appendChild(card);
             });
             const grid = document.getElementById('catGrid'); grid.innerHTML = '';
@@ -162,40 +135,32 @@
             const btn = document.getElementById('saveBtn');
             const btnText = document.getElementById('btnText');
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
-            
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="loader"></span>';
-
+            btn.disabled = true; btnText.innerHTML = '<span class="loader"></span>';
             const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
 
             try {
                 await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-                
-                // КОНФЕТІ ПРИ ЗБЕРЕЖЕННІ
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.8 },
-                    colors: ['#ffffff', '#6366f1', '#a855f7']
-                });
-
+                confetti({ particleCount: 80, spread: 60, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
                 btnText.innerHTML = 'DONE ✅';
                 btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
-
                 setTimeout(() => {
                     amtI.value = ''; document.getElementById('comment').value = '';
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
                     btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
                     btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
-                    loadData(); 
+                    loadData(true); // Форсуємо оновлення даних
                 }, 1000);
-            } catch (e) { alert("Error"); btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ'; }
+            } catch (e) { alert("Error"); btn.disabled = false; }
         }
 
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { let d = ts - e.changedTouches[0].screenX; if (d > 70) toggleDrawer(true); if (d < -70) toggleDrawer(false); });
-        
-        window.onload = loadData;
+        document.addEventListener('touchend', e => { 
+            let d = ts - e.changedTouches[0].screenX;
+            if (d > 70) toggleDrawer(true);
+            if (d < -70) toggleDrawer(false);
+        });
+
+        window.onload = () => loadData();
     </script>
 </body>
 </html>
