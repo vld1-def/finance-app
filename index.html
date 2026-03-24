@@ -83,63 +83,78 @@
         const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec';
         let s = { u: '', c: '', m: 'Карта', d: null };
 
-        async function loadData() {
-            try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                refreshUI(data);
-            } catch (e) { console.error("Load error", e); }
-        }
+// ФУНКЦІЯ ДЛЯ ЧИТАННЯ (JSONP)
+function loadData() {
+    // Видаляємо старий скрипт, якщо він був
+    const oldScript = document.getElementById('jsonp-data');
+    if (oldScript) oldScript.remove();
 
-        function refreshUI(data) {
-            document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
-            document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
-            const list = document.getElementById('hList'); list.innerHTML = '';
-            data.history.forEach(i => {
-                const card = document.createElement('div');
-                card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>`;
-                list.appendChild(card);
-            });
-        }
+    // Створюємо новий запит через тег script
+    const script = document.createElement('script');
+    script.id = 'jsonp-data';
+    // Додаємо ?callback=refreshUI до посилання
+    script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
+    document.body.appendChild(script);
+}
 
-        function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function setMethod(m, el) { s.m = m; document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
+// Ця функція викличеться автоматично, коли Google "віддасть" дані
+function refreshUI(data) {
+    s.d = data;
+    document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
+    document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
+    
+    const list = document.getElementById('hList'); 
+    list.innerHTML = '';
+    data.history.forEach(i => {
+        const card = document.createElement('div');
+        card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+        card.innerHTML = `<div class="flex justify-between items-start mb-2"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>`;
+        list.appendChild(card);
+    });
+}
 
-        async function save() {
-            const amtI = document.getElementById('amount');
-            if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
-            const btn = document.getElementById('saveBtn'); btn.disabled = true;
-            amtI.classList.add('fly');
+// ФУНКЦІЯ ДЛЯ ЗАПИСУ
+async function save() {
+    const amtI = document.getElementById('amount');
+    if(!s.u || !s.c || !amtI.value) return alert('Заповни Хто, Категорію та Суму!');
+    
+    const btn = document.getElementById('saveBtn'); 
+    btn.disabled = true; 
+    amtI.classList.add('fly');
 
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    mode: 'no-cors', // Важливо для GAS
-                    body: JSON.stringify({
-                        user: s.u, category: s.c, amount: amtI.value,
-                        method: s.m, comment: document.getElementById('comment').value
-                    })
-                });
-                
-                document.getElementById('successOverlay').style.display = 'flex';
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } catch (e) { alert("Помилка запису"); btn.disabled = false; }
-        }
+    const payload = {
+        user: s.u,
+        category: s.c,
+        amount: amtI.value,
+        method: s.m,
+        comment: document.getElementById('comment').value
+    };
 
-        // SWIPE
-        let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { 
-            let d = ts - e.changedTouches[0].screenX;
-            if (d > 80) toggleDrawer(true);
-            if (d < -80) toggleDrawer(false);
+    try {
+        await fetch(API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
         });
 
-        window.onload = loadData;
+        document.getElementById('successOverlay').style.display = 'flex';
+        
+        setTimeout(() => {
+            document.getElementById('successOverlay').style.display = 'none';
+            amtI.value = '';
+            document.getElementById('comment').value = '';
+            amtI.classList.remove('fly');
+            btn.disabled = false;
+            loadData(); // Оновлюємо дані через JSONP
+        }, 1200);
+    } catch (e) {
+        alert("Помилка запису");
+        btn.disabled = false;
+    }
+}
+
+window.onload = loadData;
     </script>
 </body>
 </html>
