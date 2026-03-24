@@ -2,76 +2,68 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Glass Finance Pro</title>
+    <title>Glass Finance</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <style>
-        :root { --glass: rgba(255, 255, 255, 0.08); --glass-border: rgba(255, 255, 255, 0.12); }
+        :root { --glass: rgba(255, 255, 255, 0.06); --glass-border: rgba(255, 255, 255, 0.1); }
         html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, sans-serif; position: fixed; }
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; }
         
-        .liquid-glass {
-            background: var(--glass);
-            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
-            border: 1px solid var(--glass-border); border-radius: 26px;
-        }
+        .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 20px; }
 
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.3; transition: 0.3s; padding: 14px 0; flex: 1; text-align: center; font-weight: 700; border-radius: 18px; }
-        .btn-user.active { opacity: 1; background: #fff; color: #000; transform: scale(1.05); }
+        /* Мінімалістичні юзери */
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 12px; font-weight: 600; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-user.active { opacity: 1; background: #fff; color: #000; border-color: #fff; }
 
-        .method-btn { background: var(--glass); opacity: 0.4; flex: 1; padding: 12px; border-radius: 14px; font-size: 11px; font-weight: 800; border: 1px solid var(--glass-border); text-transform: uppercase; }
-        .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.15); }
+        .method-btn { background: var(--glass); opacity: 0.5; flex: 1; padding: 10px; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid var(--glass-border); }
+        .method-btn.active { opacity: 1; border-color: #fff; background: rgba(255,255,255,0.1); }
 
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 16px; border-radius: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; transition: 0.2s; }
-        .cat-card.active { background: #6366f1; border-color: #818cf8; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 14px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.2s; }
+        .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
 
-        #historyDrawer { 
-            position: fixed; top: 0; right: -100%; width: 100%; height: 100%; 
-            background: rgba(0,0,0,0.96); backdrop-filter: blur(40px);
-            transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; 
-            padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
-        }
+        /* Складна анімація лоадера в кнопці */
+        .loader { width: 18px; height: 18px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 0.6s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #historyDrawer { position: fixed; top: 0; right: -100%; width: 100%; height: 100%; background: rgba(0,0,0,0.97); backdrop-filter: blur(40px); transition: 0.5s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px; }
         #historyDrawer.open { right: 0; }
 
-        /* Аналітика в 2 рядки */
-        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .stat-chip { min-width: 125px; padding: 14px; background: var(--glass); border-radius: 20px; border: 1px solid var(--glass-border); transition: 0.2s; }
-        .stat-chip.selected { background: #6366f1; border-color: #fff; }
-
-        @keyframes flyAway { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-150px); } }
-        .fly { animation: flyAway 0.6s forwards; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        input[type="number"] { font-size: 4rem; font-weight: 200; }
     </style>
 </head>
 <body>
     <div class="safe-area">
-        <!-- Статистика в хедері -->
-        <div class="flex gap-2 mb-6 mt-2">
-            <div class="liquid-glass flex-1 p-4 text-center">
-                <p id="tVlad" class="text-xl font-bold text-blue-400">₴0</p>
-                <p class="text-[8px] opacity-40 uppercase tracking-[0.2em] font-bold">Влад</p>
+        <!-- Картки статистики -->
+        <div class="flex gap-2 mb-4 mt-2">
+            <div class="liquid-glass flex-1 p-3 text-center">
+                <p id="tVlad" class="text-lg font-bold text-blue-400">₴0</p>
+                <p class="text-[8px] opacity-30 uppercase font-bold">Влад</p>
             </div>
-            <div class="liquid-glass flex-1 p-4 text-center">
-                <p id="tTania" class="text-xl font-bold text-pink-400">₴0</p>
-                <p class="text-[8px] opacity-40 uppercase tracking-[0.2em] font-bold">Таня</p>
+            <div class="liquid-glass flex-1 p-3 text-center">
+                <p id="tTania" class="text-lg font-bold text-pink-400">₴0</p>
+                <p class="text-[8px] opacity-30 uppercase font-bold">Таня</p>
             </div>
-            <button onclick="toggleDrawer(true)" class="liquid-glass px-6 text-2xl flex items-center">📊</button>
+            <button onclick="toggleDrawer(true)" class="liquid-glass px-5 flex items-center text-xl">📊</button>
         </div>
 
-        <!-- Вибір юзера -->
-        <div class="flex gap-3 mb-8">
-            <div onclick="setUser('Влад', this)" class="btn-user">ВЛАД</div>
-            <div onclick="setUser('Таня', this)" class="btn-user">ТАНЯ</div>
+        <!-- Мінімальний вибір юзера -->
+        <div class="flex gap-2 mb-6">
+            <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
+            <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
         </div>
 
-        <div class="flex-1 space-y-6 overflow-y-auto no-scrollbar pb-10">
-            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-8xl font-thin text-center outline-none py-2 text-white">
+        <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-10">
+            <!-- Поле вводу суми -->
+            <input type="number" id="amount" inputmode="decimal" placeholder="0" 
+                   class="w-full bg-transparent text-center outline-none py-2 text-white">
 
             <div class="flex gap-2">
-                <button onclick="setMethod('Карта', this)" class="method-btn active">💳 Карта</button>
-                <button onclick="setMethod('Готівка', this)" class="method-btn">💵 Готівка</button>
+                <button onclick="setMethod('Карта', this)" class="method-btn active">💳 КАРТА</button>
+                <button onclick="setMethod('Готівка', this)" class="method-btn">💵 ГОТІВКА</button>
             </div>
 
             <div class="grid grid-cols-2 gap-2">
@@ -83,56 +75,37 @@
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
 
-            <textarea id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-4 rounded-[24px] text-center outline-none border border-white/10 h-20 resize-none text-white text-sm"></textarea>
+            <!-- Коментар став меншим -->
+            <input type="text" id="comment" placeholder="Коментар..." 
+                   class="w-full bg-white/5 p-3 rounded-xl text-center outline-none border border-white/5 text-white text-xs h-12">
 
-            <button onclick="save()" id="saveBtn" class="w-full py-6 rounded-[30px] font-black bg-white text-black uppercase tracking-[0.3em]">ЗБЕРЕГТИ</button>
+            <!-- Мінімалістична кнопка з лоадером всередині -->
+            <button onclick="save()" id="saveBtn" 
+                    class="w-full py-4 rounded-2xl font-bold bg-white text-black uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                <span id="btnText">ЗБЕРЕГТИ</span>
+            </button>
         </div>
     </div>
 
-    <!-- Аналітика Drawer -->
+    <!-- Аналітика -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-6">
-            <h2 class="text-3xl font-black italic uppercase tracking-tighter text-white">Аналітика</h2>
-            <button onclick="toggleDrawer(false)" class="text-4xl text-white">&times;</button>
+            <h2 class="text-2xl font-black italic uppercase text-white">Аналітика</h2>
+            <button onclick="toggleDrawer(false)" class="text-4xl text-white opacity-40">&times;</button>
         </div>
-
-        <!-- Категорії (2 рядки) -->
-        <div class="mb-6">
-            <p class="text-[9px] uppercase opacity-40 mb-3 tracking-widest font-bold">По категоріям</p>
-            <div id="catGrid" class="cat-grid-stats no-scrollbar"></div>
-        </div>
-
-        <!-- Фільтр юзерів -->
-        <div class="flex gap-2 mb-6">
-            <button id="fAll" onclick="fH('All', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold bg-white text-black rounded-full uppercase">Всі</button>
-            <button id="fVlad" onclick="fH('Влад', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold rounded-full uppercase">Влад</button>
-            <button id="fTania" onclick="fH('Таня', this)" class="filter-btn liquid-glass flex-1 py-3 text-[10px] font-bold rounded-full uppercase">Таня</button>
-        </div>
-
         <div id="hList" class="flex-1 overflow-y-auto space-y-3 pb-20 no-scrollbar"></div>
     </div>
 
-    <div id="successOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:100; align-items:center; justify-content:center;">
-        <div class="text-center"><div class="text-8xl mb-4">✅</div><p class="font-black text-2xl uppercase text-white">Done</p></div>
-    </div>
-
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec';
-        let s = { u: '', c: '', m: 'Карта', d: null, uF: 'All', cF: null };
+        // ВСТАВ СВОЄ ПОСИЛАННЯ ТУТ
+        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJkoQYhqqtnxN3QxF-udoY/exec'; 
+        let s = { u: '', c: '', m: 'Карта', d: null };
 
-        // КНОПКИ
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function setMethod(m, el) { s.m = m; document.querySelectorAll('.method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
-        function fH(u, el) { 
-            s.uF = u; 
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('bg-white', 'text-black')); 
-            el.classList.add('bg-white', 'text-black'); 
-            render(); 
-        }
 
-        // ДАНІ (JSONP)
         function loadData() {
             const script = document.createElement('script');
             script.src = `${API_URL}?callback=refreshUI&t=${Date.now()}`; 
@@ -141,64 +114,62 @@
         }
 
         function refreshUI(data) {
-            s.d = data;
             document.getElementById('tVlad').innerText = '₴' + data.stats.vlad.toLocaleString();
             document.getElementById('tTania').innerText = '₴' + data.stats.tania.toLocaleString();
-            render();
-        }
-
-        function render() {
             const list = document.getElementById('hList'); list.innerHTML = '';
-            s.d.history.forEach(i => {
-                if(s.uF !== 'All' && i.u !== s.uF) return;
-                if(s.cF && i.c !== s.cF) return;
+            data.history.forEach(i => {
                 const card = document.createElement('div');
-                card.className = 'liquid-glass p-5 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-start mb-2"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m}</p></div><p class="font-bold text-lg text-white">₴${i.a}</p></div>${i.cm ? `<p class="text-xs italic opacity-60 bg-white/5 p-2 rounded-lg border-l-2 border-indigo-500 mt-2">${i.cm}</p>` : ''}`;
+                card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+                card.innerHTML = `<div class="flex justify-between items-start"><div><p class="font-bold text-sm text-white">${i.c}</p><p class="text-[9px] opacity-40 uppercase">${i.d} • ${i.u}</p></div><p class="font-bold text-white">₴${i.a}</p></div>`;
                 list.appendChild(card);
             });
-
-            const grid = document.getElementById('catGrid'); grid.innerHTML = '';
-            for (let name in s.d.catStats) {
-                let val = s.uF === 'All' ? s.d.catStats[name].total : (s.uF === 'Влад' ? s.d.catStats[name].vlad : s.d.catStats[name].tania);
-                if (val <= 0) continue;
-                const div = document.createElement('div');
-                div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
-                div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
-                div.innerHTML = `<p class="text-[9px] opacity-50 truncate uppercase font-bold tracking-tighter">${name}</p><p class="font-black text-base text-white">₴${val.toLocaleString()}</p>`;
-                grid.appendChild(div);
-            }
         }
 
         async function save() {
             const amtI = document.getElementById('amount');
+            const btn = document.getElementById('saveBtn');
+            const btnText = document.getElementById('btnText');
+
             if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
-            const btn = document.getElementById('saveBtn'); btn.disabled = true;
-            amtI.classList.add('fly');
+            
+            // Стан завантаження
+            btn.disabled = true;
+            btnText.innerHTML = '<span class="loader"></span>';
 
             const payload = { user: s.u, category: s.c, amount: amtI.value, method: s.m, comment: document.getElementById('comment').value };
 
             try {
                 await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload) });
-                document.getElementById('successOverlay').style.display = 'flex';
+                
+                // Статус Done
+                btnText.innerHTML = 'DONE ✅';
+                btn.classList.replace('bg-white', 'bg-green-500');
+                btn.classList.add('text-white');
+
                 setTimeout(() => {
-                    document.getElementById('successOverlay').style.display = 'none';
-                    amtI.value = ''; document.getElementById('comment').value = '';
+                    // Очистка та скидання кнопки
+                    amtI.value = '';
+                    document.getElementById('comment').value = '';
                     document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-                    amtI.classList.remove('fly'); btn.disabled = false;
-                    loadData(); 
-                }, 1200);
-            } catch (e) { alert("Помилка"); btn.disabled = false; }
+                    
+                    btn.disabled = false;
+                    btnText.innerHTML = 'ЗБЕРЕГТИ';
+                    btn.classList.replace('bg-green-500', 'bg-white');
+                    btn.classList.remove('text-white');
+
+                    loadData(); // Оновлення даних
+                }, 1500);
+
+            } catch (e) {
+                alert("Помилка");
+                btn.disabled = false;
+                btnText.innerHTML = 'ЗБЕРЕГТИ';
+            }
         }
 
-        // SWIPE
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { 
-            let d = ts - e.changedTouches[0].screenX;
-            if (d > 80) toggleDrawer(true);
-            if (d < -80) toggleDrawer(false);
-        });
-
+        document.addEventListener('touchend', e => { let d = ts - e.changedTouches[0].screenX; if (d > 80) toggleDrawer(true); if (d < -80) toggleDrawer(false); });
+        
         window.onload = loadData;
     </script>
 </body>
