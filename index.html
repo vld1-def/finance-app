@@ -2,7 +2,7 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Glass Pro</title>
+    <title>Finance Glass</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -58,7 +58,8 @@
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
                 <div onclick="setCat('☕️ Кафе/Їжа', this)" class="cat-card">☕️ Кафе</div>
                 <div onclick="setCat('🚕 Транспорт', this)" class="cat-card">🚕 Таксі</div>
-                <div onclick="setCat('🏠 Дім/Побут', this)" class="cat-card">🏠 Дім</div>
+                <!-- Змінено категорію на Переказ -->
+                <div onclick="setCat('💸 Переказ', this)" class="cat-card">💸 Переказ</div>
                 <div onclick="setCat('🎬 Розваги', this)" class="cat-card">🎬 Розваги</div>
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
@@ -69,9 +70,11 @@
         </div>
     </div>
 
+    <!-- Analytics Drawer -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-4 text-white">
-            <h2 class="text-xl font-black italic uppercase">Аналітика</h2>
+            <!-- Зменшено слово Аналітика -->
+            <h2 class="text-lg font-bold uppercase tracking-tight opacity-80">Аналітика</h2>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
 
@@ -87,7 +90,6 @@
         </div>
 
         <div class="mb-4">
-            <p class="text-[8px] opacity-40 mb-2 tracking-widest uppercase font-bold">По категоріям</p>
             <div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div>
         </div>
 
@@ -100,8 +102,7 @@
     </div>
 
     <script>
-        // ЗАМІНИ НА СВІЙ EXEC URL
-        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJKoQYHqqtnxN3QxF-udoY/exec'; 
+        const API_URL = 'https://script.google.com/macros/s/AKfycbw1l0vQGqeu6lF9uKQjpX0vzYyuQH3e_AGxE7Rd2miCX8PJkoQYhqqtnxN3QxF-udoY/exec'; 
         let s = { u: '', c: '', m: '💳 Карта', d: null, uF: 'All', cF: null };
 
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -126,19 +127,11 @@
 
         function render() {
             if(!s.d) return;
-
-            // Метод оплати
-            let cardSum = 0, cashSum = 0;
-            if (s.uF === 'All') {
-                cardSum = s.d.stats.card || 0;
-                cashSum = s.d.stats.cash || 0;
-            } else {
-                const key = s.uF === 'Влад' ? 'vlad' : 'tania';
-                cardSum = s.d.methodStats[key].card || 0;
-                cashSum = s.d.methodStats[key].cash || 0;
-            }
-            document.getElementById('statCard').innerText = '₴' + cardSum.toLocaleString();
-            document.getElementById('statCash').innerText = '₴' + cashSum.toLocaleString();
+            let cS = 0, cC = 0;
+            if (s.uF === 'All') { cS = s.d.stats.card || 0; cC = s.d.stats.cash || 0; }
+            else { const key = s.uF === 'Влад' ? 'vlad' : 'tania'; cS = s.d.methodStats[key].card || 0; cC = s.d.methodStats[key].cash || 0; }
+            document.getElementById('statCard').innerText = '₴' + cS.toLocaleString();
+            document.getElementById('statCash').innerText = '₴' + cC.toLocaleString();
 
             const list = document.getElementById('hList'); list.innerHTML = '';
             s.d.history.forEach(i => {
@@ -146,7 +139,16 @@
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex justify-between items-center text-white"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>`;
+                // Додано відображення коментаря
+                card.innerHTML = `
+                    <div class="flex justify-between items-center text-white">
+                        <div>
+                            <p class="font-bold text-[11px]">${i.c}</p>
+                            <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p>
+                            ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1">${i.cm}</p>` : ''}
+                        </div>
+                        <p class="font-bold text-xs">₴${i.a}</p>
+                    </div>`;
                 list.appendChild(card);
             });
 
@@ -185,7 +187,12 @@
         }
 
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { let d = ts - e.changedTouches[0].screenX; if (d > 70) toggleDrawer(true); if (d < -70) toggleDrawer(false); });
+        document.addEventListener('touchend', e => { 
+            let d = ts - e.changedTouches[0].screenX;
+            if (d > 70) toggleDrawer(true);
+            if (d < -80) toggleDrawer(false);
+        });
+
         window.onload = () => loadData();
     </script>
 </body>
