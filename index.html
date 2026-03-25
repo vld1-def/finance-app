@@ -2,7 +2,7 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Glass</title>
+    <title>Glass Finance</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -31,6 +31,7 @@
 </head>
 <body>
     <div class="safe-area">
+        <!-- Stats -->
         <div class="flex gap-2 mb-4 mt-2">
             <div class="liquid-glass flex-1 p-2.5 text-center">
                 <p id="tVlad" class="text-base font-bold text-blue-400">₴0</p>
@@ -58,7 +59,6 @@
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
                 <div onclick="setCat('☕️ Кафе/Їжа', this)" class="cat-card">☕️ Кафе</div>
                 <div onclick="setCat('🚕 Транспорт', this)" class="cat-card">🚕 Таксі</div>
-                <!-- Змінено категорію на Переказ -->
                 <div onclick="setCat('💸 Переказ', this)" class="cat-card">💸 Переказ</div>
                 <div onclick="setCat('🎬 Розваги', this)" class="cat-card">🎬 Розваги</div>
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
@@ -73,7 +73,6 @@
     <!-- Analytics Drawer -->
     <div id="historyDrawer" class="flex flex-col">
         <div class="flex justify-between items-center py-4 text-white">
-            <!-- Зменшено слово Аналітика -->
             <h2 class="text-lg font-bold uppercase tracking-tight opacity-80">Аналітика</h2>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
@@ -89,9 +88,7 @@
             </div>
         </div>
 
-        <div class="mb-4">
-            <div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div>
-        </div>
+        <div class="mb-4"><div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div></div>
 
         <div class="flex gap-2 mb-4">
             <button id="fAll" onclick="fH('All', this)" class="btn-user active">Всі</button>
@@ -139,15 +136,20 @@
                 if(s.cF && i.c !== s.cF) return;
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                // Додано відображення коментаря
+                
+                // Рендер з коментарем (якщо він є)
+                let commentHtml = i.cm ? `<p class="text-[9px] italic opacity-70 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : '';
+                
                 card.innerHTML = `
-                    <div class="flex justify-between items-center text-white">
-                        <div>
-                            <p class="font-bold text-[11px]">${i.c}</p>
-                            <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p>
-                            ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1">${i.cm}</p>` : ''}
+                    <div class="flex flex-col text-white">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <p class="font-bold text-[11px]">${i.c}</p>
+                                <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p>
+                            </div>
+                            <p class="font-bold text-xs">₴${i.a}</p>
                         </div>
-                        <p class="font-bold text-xs">₴${i.a}</p>
+                        ${commentHtml}
                     </div>`;
                 list.appendChild(card);
             });
@@ -187,12 +189,7 @@
         }
 
         let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { 
-            let d = ts - e.changedTouches[0].screenX;
-            if (d > 70) toggleDrawer(true);
-            if (d < -80) toggleDrawer(false);
-        });
-
+        document.addEventListener('touchend', e => { let d = ts - e.changedTouches[0].screenX; if (d > 70) toggleDrawer(true); if (d < -80) toggleDrawer(false); });
         window.onload = () => loadData();
     </script>
 </body>
