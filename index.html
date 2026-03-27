@@ -112,132 +112,56 @@
         const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-       let s = { u: '', c: '', m: '💳 Карта', d: [], uF: 'All', cF: null, mF: '' };
+      let s = { u: '', c: '', m: '💳 Карта', d: [], uF: 'All', cF: null, mF: '' };
 const months = ["Січ", "Лют", "Бер", "Квіт", "Трав", "Черв", "Лип", "Серп", "Вер", "Жовт", "Лист", "Груд"];
-
-        // Функція для виводу логів на екран
-function log(msg, isError = false) {
-    const container = document.getElementById('debug-log');
-    if (!container) return;
-    container.style.display = 'block';
-    container.innerHTML += `<div style="color:${isError ? '#ff4d4d' : '#4ade80'}">> ${msg}</div>`;
-    console.log(msg);
-}
 
 // Функції кнопок
 function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.btn-user, .method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
 function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
-function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
+function fH(u, el) { 
+    s.uF = u; 
+    const btns = el.parentElement.querySelectorAll('.btn-user, .filter-btn');
+    btns.forEach(b => b.classList.remove('bg-white', 'text-black'));
+    el.classList.add('bg-white', 'text-black'); 
+    render(); 
+}
 
-// ЗАВАНТАЖЕННЯ
+// ЗАВАНТАЖЕННЯ (МЕПІНГ ПІД ТВОЇ СТОВПЦІ)
 async function loadData() {
     try {
-        log("Початок завантаження...");
-        
-        const { data, error } = await sb
-            .from('expenses')
-            .select('*')
-            .order('created_at', { ascending: false });
+        // Запитуємо дані з твоєї таблиці 'expenses'
+        const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
 
-        if (error) {
-            log(`Помилка Supabase: ${error.message}`, true);
-            return;
-        }
-
-        log(`Отримано рядків: ${data ? data.length : 0}`);
-
-        if (!data || data.length === 0) {
-            log("База порожня. Додай перший запис.");
-            document.getElementById('hList').innerHTML = '<p class="text-center opacity-30 mt-10">База порожня</p>';
-            return;
-        }
+        if (error) { console.error(error); return; }
 
         s.d = data.map(item => {
-            const date = new Date(item.created_at);
+            const dateObj = new Date(item.date);
+            const mId = dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2);
             return {
-                u: item.user || 'Влад',
-                c: item.category || 'Інше',
-                a: item.amount || 0,
-                m: item.method || '💳 Карта',
-                cm: item.comment || '',
-                mId: date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2),
-                mLab: months[date.getMonth()] + " " + date.getFullYear().toString().slice(-2),
-                d: date.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + date.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
+                u: item.who || 'Влад',           // твоє поле 'who'
+                c: item.categoria || 'Інше',     // твоє поле 'categoria'
+                a: parseFloat(item.sum) || 0,    // твоє поле 'sum'
+                m: item.metod || '💳 Карта',     // твоє поле 'metod'
+                cm: item.comm || '',             // твоє поле 'comm'
+                mId: mId,
+                mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
+                d: dateObj.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + dateObj.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
             };
         });
 
         if (!s.mF && s.d.length > 0) s.mF = s.d[0].mId;
+        else if (!s.mF) s.mF = new Date().getFullYear() + "-" + ("0" + (new Date().getMonth() + 1)).slice(-2);
 
-        log("Рендеринг інтерфейсу...");
         renderMonths();
-        updateCurrentMonthStats();
         render();
-        log("Готово!");
-        
-        // Сховати логи через 3 секунди, якщо все ок
-        setTimeout(() => { document.getElementById('debug-log').style.display = 'none'; }, 3000);
-
-    } catch (err) {
-        log(`Критична помилка JS: ${err.message}`, true);
-    }
-}
-
-// Оновлена функція рендеру з захистом від split
-function render() {
-    const list = document.getElementById('hList'); 
-    const grid = document.getElementById('catGrid'); 
-    list.innerHTML = '';
-    grid.innerHTML = '';
-    
-    let cardSum = 0, cashSum = 0;
-    let catTotals = {};
-
-    s.d.forEach(i => {
-        if(i.mId !== s.mF) return; 
-        if(s.uF !== 'All' && i.u !== s.uF) return;
-
-        // Рахуємо статистику
-        const isCard = i.m && i.m.includes("Карта");
-        if(isCard) cardSum += i.a; else cashSum += i.a;
-        if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
-
-        if(s.cF && i.c !== s.cF) return;
-
-        // Отримуємо іконку методу (безпечно)
-        const methodIcon = i.m ? i.m.split(' ')[0] : '💳';
-
-        const card = document.createElement('div');
-        card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-        card.innerHTML = `
-            <div class="flex flex-col text-white">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <p class="font-bold text-[11px]">${i.c}</p>
-                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${methodIcon}</p>
-                    </div>
-                    <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
-                </div>
-                ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}
-            </div>`;
-        list.appendChild(card);
-    });
-
-    document.getElementById('resCard').innerText = '₴' + cardSum.toLocaleString();
-    document.getElementById('resCash').innerText = '₴' + cashSum.toLocaleString();
-
-    for (let name in catTotals) {
-        const div = document.createElement('div');
-        div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
-        div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
-        div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
-        grid.appendChild(div);
-    }
+    } catch (err) { console.error("JS Error:", err); }
 }
 
 function renderMonths() {
     const container = document.getElementById('monthSelector');
+    if (!container) return;
     container.innerHTML = '';
     const uniqueMonths = {};
     s.d.forEach(i => { uniqueMonths[i.mId] = i.mLab; });
@@ -245,58 +169,44 @@ function renderMonths() {
     Object.keys(uniqueMonths).sort().reverse().forEach(mId => {
         const div = document.createElement('div');
         div.className = `month-chip ${s.mF === mId ? 'active' : ''} bg-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer whitespace-nowrap border border-white/5`;
-        if(s.mF === mId) { div.classList.add('bg-white', 'text-black'); }
+        if(s.mF === mId) div.classList.add('bg-white', 'text-black');
         div.innerText = uniqueMonths[mId];
         div.onclick = () => { s.mF = mId; renderMonths(); render(); };
         container.appendChild(div);
     });
 }
 
-function updateCurrentMonthStats() {
-    const now = new Date();
-    const curMonthId = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
-    let v = 0, t = 0;
-    s.d.forEach(i => {
-        if(i.mId === curMonthId) {
-            if(i.u === 'Влад') v += i.a; else if(i.u === 'Таня') t += i.a;
-        }
-    });
-    document.getElementById('curVlad').innerText = '₴' + v.toLocaleString();
-    document.getElementById('curTania').innerText = '₴' + t.toLocaleString();
-}
-
-// Оновлена функція рендеру з захистом від split
 function render() {
     const list = document.getElementById('hList'); 
     const grid = document.getElementById('catGrid'); 
-    list.innerHTML = '';
-    grid.innerHTML = '';
+    if (!list || !grid) return;
+    list.innerHTML = ''; grid.innerHTML = '';
     
-    let cardSum = 0, cashSum = 0;
+    let vS = 0, tS = 0, cardS = 0, cashS = 0;
     let catTotals = {};
 
     s.d.forEach(i => {
-        if(i.mId !== s.mF) return; 
+        if(i.mId !== s.mF) return;
+
+        if (i.u === 'Влад') vS += i.a; 
+        else if (i.u === 'Таня') tS += i.a;
+
         if(s.uF !== 'All' && i.u !== s.uF) return;
 
-        // Рахуємо статистику
-        const isCard = i.m && i.m.includes("Карта");
-        if(isCard) cardSum += i.a; else cashSum += i.a;
+        if(i.m && i.m.includes("Карта")) cardS += i.a; else cashS += i.a;
         if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
 
         if(s.cF && i.c !== s.cF) return;
 
-        // Отримуємо іконку методу (безпечно)
-        const methodIcon = i.m ? i.m.split(' ')[0] : '💳';
-
+        const icon = i.m ? i.m.split(' ')[0] : '💳';
         const card = document.createElement('div');
-        card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+        card.className = 'liquid-glass p-4 border-l-4 mb-2 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
         card.innerHTML = `
             <div class="flex flex-col text-white">
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="font-bold text-[11px]">${i.c}</p>
-                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${methodIcon}</p>
+                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${icon}</p>
                     </div>
                     <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
                 </div>
@@ -305,18 +215,22 @@ function render() {
         list.appendChild(card);
     });
 
-    document.getElementById('resCard').innerText = '₴' + cardSum.toLocaleString();
-    document.getElementById('resCash').innerText = '₴' + cashSum.toLocaleString();
+    document.getElementById('curVlad').innerText = '₴' + vS.toLocaleString();
+    document.getElementById('curTania').innerText = '₴' + tS.toLocaleString();
+    document.getElementById('resCard').innerText = '₴' + cardS.toLocaleString();
+    document.getElementById('resCash').innerText = '₴' + cashS.toLocaleString();
 
     for (let name in catTotals) {
         const div = document.createElement('div');
-        div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
+        div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''} bg-white/5 p-3 rounded-xl border border-white/10`;
+        if (s.cF === name) div.classList.add('bg-indigo-600', 'border-white');
         div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
         div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
         grid.appendChild(div);
     }
 }
 
+// ЗБЕРЕЖЕННЯ (ПІД ТВОЇ СТОВПЦІ)
 async function save() {
     const amtI = document.getElementById('amount');
     const btn = document.getElementById('saveBtn');
@@ -326,35 +240,30 @@ async function save() {
     btn.disabled = true;
     btnText.innerHTML = '<span class="loader"></span>';
 
+    // Відправка даних з правильними ключами полів
     const { error } = await sb.from('expenses').insert([{
-        user: s.u,
-        category: s.c,
-        amount: parseFloat(amtI.value),
-        method: s.m,
-        comment: document.getElementById('comment').value
+        date: new Date().toISOString(),
+        who: s.u,
+        categoria: s.c,
+        sum: parseFloat(amtI.value),
+        metod: s.m,
+        comm: document.getElementById('comment').value
     }]);
 
-    if (error) {
-        alert("Помилка Supabase: " + error.message);
-        btn.disabled = false;
-        btnText.innerHTML = 'ЗБЕРЕГТИ';
-        return;
-    }
+    if (error) { alert("Error: " + error.message); btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ'; return; }
 
-    confetti({ particleCount: 60, spread: 50, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
+    confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
     btnText.innerHTML = 'DONE ✅';
     btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
 
     setTimeout(() => {
         amtI.value = ''; document.getElementById('comment').value = '';
-        document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
         btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
         btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
         loadData(); 
     }, 1000);
 }
 
-// Запуск при старті
 document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
