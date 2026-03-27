@@ -468,61 +468,78 @@ document.addEventListener('touchend', (e) => {
 //    ... твій код ...
 //    updateAIInformer();
 // }
+// --- НАЛАШТУВАННЯ AI ---
+const systemPrompt = {
+    role: "Фінансовий критик Glassie",
+    style: "дружній, з легким сарказмом, використовує емодзі",
+    instructions: "Проаналізуй витрати Влада і Тані. Зверни увагу на коментарі. Якщо бачиш багато однакових закладів — підкори над цим. Знайди 'триньку року' за цей місяць."
+};
+
 function openAIModal() {
     const modal = document.getElementById('aiModal');
     const textEl = document.getElementById('aiModalText');
     
     if (!s.d || s.d.length === 0) return;
 
-    // Беремо дані за поточний вибраний місяць (s.mF)
     const currentData = s.d.filter(i => i.mId === s.mF);
-    
     if (currentData.length === 0) {
-        textEl.innerText = "Цього місяця поки що тиша. Гроші в безпеці! 🛡️";
-    } else {
-        // --- АНАЛІЗ ---
-        let total = 0, vlad = 0, tania = 0;
-        let cats = {};
-        let comments = [];
-
-        currentData.forEach(i => {
-            total += i.a;
-            if (i.u === 'Влад') vlad += i.a; else tania += i.a;
-            cats[i.c] = (cats[i.c] || 0) + i.a;
-            if (i.cm) comments.push(i.cm.toLowerCase());
-        });
-
-        const topCat = Object.keys(cats).reduce((a, b) => cats[a] > cats[b] ? a : b);
-        
-        // Генерація фрази
-        let report = "";
-        
-        // 1. Про баланс
-        if (vlad > tania * 1.5) report += "Влад цього місяця — головний меценат. 🤵‍♂️ ";
-        else if (tania > vlad * 1.5) report += "Таня бере на себе основні витрати. 💃 ";
-        else report += "Ви ідеально збалансовані! Витрати майже 50/50. ⚖️ ";
-
-        // 2. Про категорії
-        report += `Найбільше коштів пішло на "${topCat}". `;
-
-        // 3. Аналіз коментів (ключові слова)
-        const allComms = comments.join(" ");
-        if (allComms.includes("сільпо") || allComms.includes("атб") || allComms.includes("маркет")) {
-            report += "Помічаю багато закупів у маркетах. 🛒 ";
-        }
-        if (allComms.includes("кава") || allComms.includes("coffee") || allComms.includes("мак")) {
-            report += "Кава та смаколики — ваша слабкість цього місяця. ☕ ";
-        }
-
-        // 4. Денний підсумок
-        const day = new Date().getDate();
-        const avg = (total / day).toFixed(0);
-        report += `В середньому ви витрачаєте ₴${avg} на день.`;
-
-        textEl.innerText = report;
+        textEl.innerText = "У базі порожньо. Я поки відпочиваю, а ваші гроші — у безпеці. ☕";
+        showModal(modal);
+        return;
     }
 
-    // Показуємо модалку
+    // --- ЗБІР ДАНИХ ДЛЯ АНАЛІЗУ ---
+    let total = 0, vlad = 0, tania = 0;
+    let cats = {}, comments = [];
+    
+    currentData.forEach(i => {
+        total += i.a;
+        if (i.u === 'Влад') vlad += i.a; else tania += i.a;
+        cats[i.c] = (cats[i.c] || 0) + i.a;
+        if (i.cm) comments.push(i.cm.toLowerCase());
+    });
+
+    const topCat = Object.keys(cats).reduce((a, b) => cats[a] > cats[b] ? a : b);
+    const spender = vlad > tania ? "Влад" : "Таня";
+    
+    // --- ГЕНЕРАЦІЯ ВІДПОВІДІ ЗА ПРОМПТОМ ---
+    let aiResponse = "";
+
+    // Вступ (згідно зі стилем)
+    aiResponse += "Привіт! Я ваш скляний асистент. Глянув я у ваші чеки... 👀\n\n";
+
+    // Аналіз лідера (згідно з інструкцією)
+    if (Math.abs(vlad - tania) < (total * 0.15)) {
+        aiResponse += "Ви обоє витрачаєте дуже синхронно. Справжня фінансова ідилія! ⚖️\n";
+    } else {
+        aiResponse += `Схоже, ${spender} цього місяця вирішив(-ла) ні в чому собі не відмовляти. Гаманець тримається з останніх сил! 💪\n`;
+    }
+
+    // Аналіз категорій
+    aiResponse += `\nВаш головний 'спонсор' задоволення — категорія "${topCat}". `;
+
+    // Пошук патернів у коментарях (Smart Detection)
+    const mentions = (word) => comments.filter(c => c.includes(word)).length;
+    
+    if (mentions("сільпо") > 2 || mentions("атб") > 2) {
+        aiResponse += "Ви так часто буваєте в супермаркетах, що пора вимагати там іменну касу. 🛒";
+    } else if (mentions("кава") > 2 || mentions("coffee") > 2) {
+        aiResponse += "Кількість кофеїну у ваших витратах зашкалює! Можливо, відкриєте свою кав'ярню? ☕";
+    } else if (mentions("болт") > 2 || mentions("уклон") > 2 || mentions("таксі") > 2) {
+        aiResponse += "Таксі — це звісно зручно, але ваші фінанси натякають, що прогулянки корисніші для здоров'я. 🚕";
+    } else {
+        aiResponse += "Загалом, коментарі доволі різноманітні, явних залежностей не бачу. Молодці! ✨";
+    }
+
+    // Фінальна порада (згідно з промптом)
+    const dailyAvg = (total / 30).toFixed(0);
+    aiResponse += `\n\nПорада: Зараз ви йдете по ₴${dailyAvg} в день. Спробуйте завтра витратити 0 — це буде найкращий день для вашої карми! 🧘‍♂️`;
+
+    textEl.innerText = aiResponse;
+    showModal(modal);
+}
+
+function showModal(modal) {
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
     if (window.navigator.vibrate) window.navigator.vibrate(20);
