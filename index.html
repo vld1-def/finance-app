@@ -111,151 +111,174 @@
         const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
         const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let s = { u: '', c: '', m: '💳 Карта', d: [], uF: 'All', cF: null, mF: '' };
-        const months = ["Січ", "Лют", "Бер", "Квіт", "Трав", "Черв", "Лип", "Серп", "Вер", "Жовт", "Лист", "Груд"];
+       let s = { u: '', c: '', m: '💳 Карта', d: [], uF: 'All', cF: null, mF: '' };
+const months = ["Січ", "Лют", "Бер", "Квіт", "Трав", "Черв", "Лип", "Серп", "Вер", "Жовт", "Лист", "Груд"];
 
-        function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.btn-user, .method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
-        function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
+// Функції кнопок
+function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function setCat(n, el) { s.c = n; document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.btn-user, .method-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
+function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
 
-        // ЗАВАНТАЖЕННЯ ДАНИХ
-        async function loadData() {
-            const { data, error } = await sb
-                .from('expenses')
-                .select('*')
-                .order('created_at', { ascending: false });
+// ЗАВАНТАЖЕННЯ
+async function loadData() {
+    console.log("Завантаження даних...");
+    const { data, error } = await sb
+        .from('expenses')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-            if (error) return console.error(error);
-            
-            s.d = data.map(item => {
-                const date = new Date(item.created_at);
-                return {
-                    u: item.user,
-                    c: item.category,
-                    a: item.amount,
-                    m: item.method,
-                    cm: item.comment,
-                    mId: date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2),
-                    mLab: months[date.getMonth()] + " " + date.getFullYear().toString().slice(-2),
-                    d: date.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + date.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
-                };
-            });
+    if (error) {
+        console.error("Помилка Supabase:", error);
+        alert("Помилка завантаження: " + error.message);
+        return;
+    }
 
-            if(!s.mF && s.d.length > 0) s.mF = s.d[0].mId;
-            renderMonths();
-            updateCurrentMonthStats();
-            render();
+    console.log("Отримано рядків:", data.length);
+
+    if (data.length === 0) {
+        document.getElementById('hList').innerHTML = '<p class="text-center opacity-30 mt-10">База даних порожня</p>';
+        return;
+    }
+
+    s.d = data.map(item => {
+        const date = new Date(item.created_at);
+        return {
+            u: item.user,
+            c: item.category,
+            a: item.amount,
+            m: item.method,
+            cm: item.comment,
+            mId: date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2),
+            mLab: months[date.getMonth()] + " " + date.getFullYear().toString().slice(-2),
+            d: date.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + date.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
+        };
+    });
+
+    // Авто-вибір останнього місяця
+    if (!s.mF) s.mF = s.d[0].mId;
+
+    renderMonths();
+    updateCurrentMonthStats();
+    render();
+}
+
+function renderMonths() {
+    const container = document.getElementById('monthSelector');
+    container.innerHTML = '';
+    const uniqueMonths = {};
+    s.d.forEach(i => { uniqueMonths[i.mId] = i.mLab; });
+    
+    Object.keys(uniqueMonths).sort().reverse().forEach(mId => {
+        const div = document.createElement('div');
+        div.className = `month-chip ${s.mF === mId ? 'active' : ''} bg-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer whitespace-nowrap border border-white/5`;
+        if(s.mF === mId) { div.classList.add('bg-white', 'text-black'); }
+        div.innerText = uniqueMonths[mId];
+        div.onclick = () => { s.mF = mId; renderMonths(); render(); };
+        container.appendChild(div);
+    });
+}
+
+function updateCurrentMonthStats() {
+    const now = new Date();
+    const curMonthId = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
+    let v = 0, t = 0;
+    s.d.forEach(i => {
+        if(i.mId === curMonthId) {
+            if(i.u === 'Влад') v += i.a; else if(i.u === 'Таня') t += i.a;
         }
+    });
+    document.getElementById('curVlad').innerText = '₴' + v.toLocaleString();
+    document.getElementById('curTania').innerText = '₴' + t.toLocaleString();
+}
 
-        function renderMonths() {
-            const container = document.getElementById('monthSelector');
-            container.innerHTML = '';
-            const uniqueMonths = {};
-            s.d.forEach(i => { uniqueMonths[i.mId] = i.mLab; });
-            
-            Object.keys(uniqueMonths).sort().reverse().forEach(mId => {
-                const div = document.createElement('div');
-                div.className = `month-chip ${s.mF === mId ? 'active' : ''} bg-white/10 px-3 py-1 rounded-lg text-[10px] font-bold cursor-pointer`;
-                if(s.mF === mId) div.classList.add('bg-white', 'text-black');
-                div.innerText = uniqueMonths[mId];
-                div.onclick = () => { s.mF = mId; renderMonths(); render(); };
-                container.appendChild(div);
-            });
-        }
+function render() {
+    const list = document.getElementById('hList'); 
+    const grid = document.getElementById('catGrid'); 
+    list.innerHTML = '';
+    grid.innerHTML = '';
+    
+    let cardSum = 0, cashSum = 0;
+    let catTotals = {};
 
-        function updateCurrentMonthStats() {
-            const now = new Date();
-            const curMonthId = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
-            let v = 0, t = 0;
-            s.d.forEach(i => {
-                if(i.mId === curMonthId) {
-                    if(i.u === 'Влад') v += i.a; else if(i.u === 'Таня') t += i.a;
-                }
-            });
-            document.getElementById('curVlad').innerText = '₴' + v.toLocaleString();
-            document.getElementById('curTania').innerText = '₴' + t.toLocaleString();
-        }
+    s.d.forEach(i => {
+        if(i.mId !== s.mF) return; // Фільтр місяця
+        if(s.uF !== 'All' && i.u !== s.uF) return; // Фільтр юзера
 
-        function render() {
-            const list = document.getElementById('hList'); list.innerHTML = '';
-            const grid = document.getElementById('catGrid'); grid.innerHTML = '';
-            let cardSum = 0, cashSum = 0;
-            let catTotals = {};
+        // Рахуємо статистику
+        if(i.m && i.m.includes("Карта")) cardSum += i.a; else cashSum += i.a;
+        if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
 
-            s.d.forEach(i => {
-                if(i.mId !== s.mF) return;
-                if(s.uF !== 'All' && i.u !== s.uF) return;
+        if(s.cF && i.c !== s.cF) return; // Фільтр категорії
 
-                if(i.m.includes("Карта")) cardSum += i.a; else cashSum += i.a;
-                if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
+        const card = document.createElement('div');
+        card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+        card.innerHTML = `
+            <div class="flex flex-col text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-[11px]">${i.c}</p>
+                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p>
+                    </div>
+                    <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
+                </div>
+                ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}
+            </div>`;
+        list.appendChild(card);
+    });
 
-                if(s.cF && i.c !== s.cF) return;
+    document.getElementById('resCard').innerText = '₴' + cardSum.toLocaleString();
+    document.getElementById('resCash').innerText = '₴' + cashSum.toLocaleString();
 
-                const card = document.createElement('div');
-                card.className = 'liquid-glass p-3 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `<div class="flex flex-col text-white"><div class="flex justify-between items-center"><div><p class="font-bold text-[11px]">${i.c}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p></div><p class="font-bold text-xs">₴${i.a}</p></div>${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}</div>`;
-                list.appendChild(card);
-            });
+    for (let name in catTotals) {
+        const div = document.createElement('div');
+        div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
+        div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
+        div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
+        grid.appendChild(div);
+    }
+}
 
-            document.getElementById('resCard').innerText = '₴' + cardSum.toLocaleString();
-            document.getElementById('resCash').innerText = '₴' + cashSum.toLocaleString();
+async function save() {
+    const amtI = document.getElementById('amount');
+    const btn = document.getElementById('saveBtn');
+    const btnText = document.getElementById('btnText');
+    if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
+    
+    btn.disabled = true;
+    btnText.innerHTML = '<span class="loader"></span>';
 
-            for (let name in catTotals) {
-                const div = document.createElement('div');
-                div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
-                div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
-                div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
-                grid.appendChild(div);
-            }
-        }
+    const { error } = await sb.from('expenses').insert([{
+        user: s.u,
+        category: s.c,
+        amount: parseFloat(amtI.value),
+        method: s.m,
+        comment: document.getElementById('comment').value
+    }]);
 
-        // ЗБЕРЕЖЕННЯ В SUPABASE
-        async function save() {
-            const amtI = document.getElementById('amount');
-            const btn = document.getElementById('saveBtn');
-            const btnText = document.getElementById('btnText');
-            if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
-            
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="loader"></span>';
+    if (error) {
+        alert("Помилка Supabase: " + error.message);
+        btn.disabled = false;
+        btnText.innerHTML = 'ЗБЕРЕГТИ';
+        return;
+    }
 
-            const { error } = await sb.from('expenses').insert([{
-                user: s.u,
-                category: s.c,
-                amount: parseFloat(amtI.value),
-                method: s.m,
-                comment: document.getElementById('comment').value
-            }]);
+    confetti({ particleCount: 60, spread: 50, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
+    btnText.innerHTML = 'DONE ✅';
+    btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
 
-            if (error) {
-                alert("Помилка Supabase: " + error.message);
-                btn.disabled = false;
-                return;
-            }
+    setTimeout(() => {
+        amtI.value = ''; document.getElementById('comment').value = '';
+        document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
+        btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
+        btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
+        loadData(); 
+    }, 1000);
+}
 
-            confetti({ particleCount: 60, spread: 50, origin: { y: 0.8 }, colors: ['#ffffff', '#6366f1'] });
-            btnText.innerHTML = 'DONE ✅';
-            btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
-
-            setTimeout(() => {
-                amtI.value = ''; document.getElementById('comment').value = '';
-                document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-                btn.disabled = false; btnText.innerHTML = 'ЗБЕРЕГТИ';
-                btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
-                loadData(); 
-            }, 1000);
-        }
-
-        let ts = 0; document.addEventListener('touchstart', e => ts = e.changedTouches[0].screenX);
-        document.addEventListener('touchend', e => { 
-            let d = ts - e.changedTouches[0].screenX;
-            if (d > 70) toggleDrawer(true);
-            if (d < -80) toggleDrawer(false);
-        });
-
-        window.onload = loadData;
+// Запуск при старті
+document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
