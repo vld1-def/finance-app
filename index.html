@@ -49,6 +49,19 @@
         
         #amount { font-size: 4rem; font-weight: 200; pointer-events: auto; }
         input, textarea, button { pointer-events: auto; } /* Дозволяємо кліки по елементах */
+        /* Підсвітка активного місяця */
+        .month-chip.active { 
+            background-color: #fff !important; 
+            color: #000 !important; 
+            border-color: #fff !important; 
+        }
+        
+        /* Дозволяємо прокрутку списку історії */
+        #hList { 
+            overflow-y: auto !important; 
+            touch-action: pan-y; 
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 
 </head>
@@ -163,7 +176,7 @@
                     cm: item.comm || '',
                     mId: mId,
                     mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
-                    d: dateObj.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + dateObj.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
+                    d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
                 };
             });
 
@@ -174,7 +187,7 @@
             render();
         }
 
-       function renderMonths() {
+    function renderMonths() {
     const container = document.getElementById('monthSelector');
     if (!container) return;
     container.innerHTML = '';
@@ -183,12 +196,12 @@
     
     Object.keys(uniqueMonths).sort().reverse().forEach(mId => {
         const div = document.createElement('div');
-        // Перевірка на активність місяця
+        // Перевірка: якщо місяць вибраний — додаємо клас active
         const isActive = s.mF === mId;
         div.className = `month-chip ${isActive ? 'active' : ''} bg-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer whitespace-nowrap border border-white/5`;
         div.innerText = uniqueMonths[mId];
         div.onclick = (e) => { 
-            e.stopPropagation(); // щоб не спрацював свайп при кліку
+            e.stopPropagation();
             s.mF = mId; 
             renderMonths(); 
             render(); 
@@ -239,8 +252,8 @@
             btn.disabled = true;
             document.getElementById('btnText').innerHTML = '<span class="loader"></span>';
 
-            const { error } = await sb.from('expenses').insert([{
-                date: new Date().toISOString(),
+           const { error } = await sb.from('expenses').insert([{
+                date: new Date().toISOString(), // ISO формат передає і дату, і час
                 who: s.u,
                 categoria: s.c,
                 sum: parseFloat(amtI.value),
