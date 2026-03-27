@@ -65,6 +65,43 @@
     padding-bottom: 40px;
     /* touch-action НЕ ставимо сюди, щоб не блокувати кліки */
 }
+        /* Пульсуюча кнопка AI */
+.ai-btn {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+    animation: ai-pulse 3s infinite;
+}
+
+@keyframes ai-pulse {
+    0% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4); transform: scale(1); }
+    50% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); transform: scale(1.05); }
+    100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.4); transform: scale(1); }
+}
+
+/* Картка повідомлення асистента */
+.ai-informer-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
+    border: 1px solid rgba(168, 85, 247, 0.2);
+    border-radius: 20px;
+    padding: 16px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-informer-box::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+    animation: rotate-light 10s linear infinite;
+}
+
+@keyframes rotate-light {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
     </style>
 
 </head>
@@ -80,7 +117,9 @@
                 <p id="curTania" class="text-lg font-bold text-pink-400">₴0</p>
                 <p class="text-[7px] opacity-30 uppercase font-bold text-white">Таня</p>
             </div>
-            <button onclick="toggleDrawer(true)" class="liquid-glass px-6 flex items-center text-xl">📊</button>
+            <button onclick="toggleDrawer(true)" class="liquid-glass ai-btn px-6 flex items-center text-xl">
+                ✨
+            </button>
         </div>
 
         <div class="flex gap-2 mb-6">
@@ -117,6 +156,14 @@
     <div id="historyDrawer">
         <div class="flex justify-between items-center py-2 text-white">
             <h2 class="text-sm font-bold uppercase opacity-50">Аналітика</h2>
+                        <div id="aiBox" class="ai-informer-box">
+                <div class="flex items-center gap-2 mb-2 relative z-10">
+                    <span class="text-[10px] font-black tracking-[0.3em] text-indigo-400 uppercase">AI Асистент</span>
+                </div>
+                <p id="aiText" class="text-[11px] leading-relaxed text-white/90 italic relative z-10">
+                    Зачекайте, зводжу дебет з кредитом...
+                </p>
+            </div>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
 
@@ -251,6 +298,7 @@ function toggleDrawer(o) {
                 div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
                 grid.appendChild(div);
             }
+            updateAIInformer();
         }
 
         async function save() {
@@ -304,6 +352,71 @@ document.addEventListener('touchend', (e) => {
         else toggleDrawer(false);        // Свайп вправо -> закрити
     }
 }, { passive: true });
+        function updateAIInformer() {
+    if (!s.d || s.d.length === 0) return;
+
+    // Фільтруємо дані за вибраним місяцем
+    const currentData = s.d.filter(i => i.mId === s.mF);
+    if (currentData.length === 0) {
+        document.getElementById('aiText').innerText = "Цього місяця витрат ще не було. Гроші цілі — і це вже гарна новина! 😉";
+        return;
+    }
+
+    let stats = {
+        total: 0,
+        vlad: 0,
+        tania: 0,
+        cats: {},
+        comments: []
+    };
+
+    currentData.forEach(i => {
+        stats.total += i.a;
+        if (i.u === 'Влад') stats.vlad += i.a; else stats.tania += i.a;
+        stats.cats[i.c] = (stats.cats[i.c] || 0) + i.a;
+        if (i.cm) stats.comments.push(i.cm.toLowerCase());
+    });
+
+    const topCat = Object.keys(stats.cats).reduce((a, b) => stats.cats[a] > stats.cats[b] ? a : b);
+    
+    // --- ГЕНЕРАЦІЯ ТЕКСТУ ---
+    let message = "";
+
+    // 1. Про лідера витрат
+    if (Math.abs(stats.vlad - stats.tania) < (stats.total * 0.1)) {
+        message += "Ви йдете нога в ногу — витрати розподілені майже порівну. Справжня команда! 🤝 ";
+    } else {
+        message += stats.vlad > stats.tania ? "Влад цього місяця бере основний удар на себе. 🤵‍♂️ " : "Таня — головний інвестор цього місяця. 💃 ";
+    }
+
+    // 2. Про топ-категорію
+    message += `Найбільша стаття витрат — ${topCat}. `;
+
+    // 3. Аналіз коментарів (Пошук частих слів)
+    if (stats.comments.length > 0) {
+        const words = stats.comments.join(" ").split(" ").filter(w => w.length > 3);
+        const counts = {};
+        words.forEach(w => counts[w] = (counts[w] || 0) + 1);
+        const frequentWord = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b, "");
+        
+        if (counts[frequentWord] > 1) {
+            message += `Помічаю, що часто фігурує "${frequentWord}" — можливо, пора туди купувати абонемент? 🎟️ `;
+        }
+    }
+
+    // 4. Підсумок дня
+    const daysInMonth = 30; // спрощено
+    const perDay = (stats.total / daysInMonth).toFixed(0);
+    message += `В середньому ви витрачаєте ₴${perDay} на добу. `;
+
+    document.getElementById('aiText').innerText = message;
+}
+
+// !!! ВАЖЛИВО: Додай виклик цієї функції в самий кінець твоєї існуючої функції render()
+// function render() {
+//    ... твій код ...
+//    updateAIInformer();
+// }
 
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
