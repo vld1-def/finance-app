@@ -30,12 +30,17 @@
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
 
         /* ANALYTICS DRAWER */
-        #historyDrawer { 
+        /*#historyDrawer { 
             position: fixed; top: 0; right: -100%; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); 
             transition: 0.4s cubic-bezier(0.16, 1, 0.3, 1); z-index: 50; 
             padding: env(safe-area-inset-top) 20px env(safe-area-inset-bottom) 20px;
-            touch-action: pan-y; /* Дозволяємо скрол тільки по вертикалі всередині */
+            touch-action: pan-y;
+        } */
+        /* Фікс, щоб drawer не заважав скролу */
+        #historyDrawer {
+            display: flex;
+            flex-direction: column;
         }
         #historyDrawer.open { right: 0; }
         
@@ -57,11 +62,12 @@
         }
         
         /* Дозволяємо прокрутку списку історії */
-        #hList { 
-            overflow-y: auto !important; 
-            touch-action: pan-y; 
-            -webkit-overflow-scrolling: touch;
-        }
+       #hList { 
+    flex: 1;
+    overflow-y: auto !important; 
+    touch-action: pan-y !important; /* Дозволяє скрол вгору/вниз */
+    -webkit-overflow-scrolling: touch; 
+}
     </style>
 
 </head>
@@ -276,31 +282,28 @@
         }
 
         // --- ЛОГІКА СВАЙПІВ (ПОВЕРНЕНО ТА ПОСИЛЕНО) ---
-        let touchStartX = 0;
+       let touchStartX = 0;
         let touchStartY = 0;
-
+        
         document.addEventListener('touchstart', (e) => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, { passive: true });
-
-document.addEventListener('touchend', (e) => {
-    const touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-    
-    const diffX = touchStartX - touchEndX;
-    const diffY = touchStartY - touchEndY;
-
-    // Свайп спрацює тільки якщо горизонтальний рух значно більший за вертикальний
-    // Це дозволяє історії прокручуватися вниз, не закриваючи панель
-    if (Math.abs(diffX) > Math.abs(diffY) * 2 && Math.abs(diffX) > 70) {
-        if (diffX > 0) {
-            toggleDrawer(true); // Свайп вліво - відкрити
-        } else {
-            toggleDrawer(false); // Свайп вправо - закрити
-        }
-    }
-}, { passive: true });
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+        
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            
+            const dx = touchStartX - touchEndX;
+            const dy = touchStartY - touchEndY;
+        
+            // Свайп спрацює ТІЛЬКИ якщо горизонтальний рух в 3 рази сильніший за вертикальний
+            // Це дозволяє спокійно гортати історію вгору/вниз
+            if (Math.abs(dx) > Math.abs(dy) * 3 && Math.abs(dx) > 60) {
+                if (dx > 0) toggleDrawer(true);  // Вліво -> відкрити
+                else toggleDrawer(false);        // Вправо -> закрити
+            }
+        }, { passive: true });
 
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
