@@ -122,6 +122,7 @@ function toggleDrawer(o) { document.getElementById('historyDrawer').classList.to
 function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
 
 // ЗАВАНТАЖЕННЯ
+// Оновлена функція завантаження з захистом
 async function loadData() {
     console.log("Завантаження даних...");
     const { data, error } = await sb
@@ -131,13 +132,10 @@ async function loadData() {
 
     if (error) {
         console.error("Помилка Supabase:", error);
-        alert("Помилка завантаження: " + error.message);
         return;
     }
 
-    console.log("Отримано рядків:", data.length);
-
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
         document.getElementById('hList').innerHTML = '<p class="text-center opacity-30 mt-10">База даних порожня</p>';
         return;
     }
@@ -145,23 +143,74 @@ async function loadData() {
     s.d = data.map(item => {
         const date = new Date(item.created_at);
         return {
-            u: item.user,
-            c: item.category,
-            a: item.amount,
-            m: item.method,
-            cm: item.comment,
+            u: item.user || 'Невідомо',
+            c: item.category || 'Інше',
+            a: item.amount || 0,
+            m: item.method || '💳 Карта', // Захист: якщо пусто, ставимо дефолт
+            cm: item.comment || '',
             mId: date.getFullYear() + "-" + ("0" + (date.getMonth() + 1)).slice(-2),
             mLab: months[date.getMonth()] + " " + date.getFullYear().toString().slice(-2),
             d: date.toLocaleDateString('uk-UA', {day:'2-digit', month:'2-digit'}) + " " + date.toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'})
         };
     });
 
-    // Авто-вибір останнього місяця
-    if (!s.mF) s.mF = s.d[0].mId;
+    if (!s.mF && s.d.length > 0) s.mF = s.d[0].mId;
 
     renderMonths();
     updateCurrentMonthStats();
     render();
+}
+
+// Оновлена функція рендеру з захистом від split
+function render() {
+    const list = document.getElementById('hList'); 
+    const grid = document.getElementById('catGrid'); 
+    list.innerHTML = '';
+    grid.innerHTML = '';
+    
+    let cardSum = 0, cashSum = 0;
+    let catTotals = {};
+
+    s.d.forEach(i => {
+        if(i.mId !== s.mF) return; 
+        if(s.uF !== 'All' && i.u !== s.uF) return;
+
+        // Рахуємо статистику
+        const isCard = i.m && i.m.includes("Карта");
+        if(isCard) cardSum += i.a; else cashSum += i.a;
+        if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
+
+        if(s.cF && i.c !== s.cF) return;
+
+        // Отримуємо іконку методу (безпечно)
+        const methodIcon = i.m ? i.m.split(' ')[0] : '💳';
+
+        const card = document.createElement('div');
+        card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
+        card.innerHTML = `
+            <div class="flex flex-col text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-[11px]">${i.c}</p>
+                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${methodIcon}</p>
+                    </div>
+                    <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
+                </div>
+                ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}
+            </div>`;
+        list.appendChild(card);
+    });
+
+    document.getElementById('resCard').innerText = '₴' + cardSum.toLocaleString();
+    document.getElementById('resCash').innerText = '₴' + cashSum.toLocaleString();
+
+    for (let name in catTotals) {
+        const div = document.createElement('div');
+        div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
+        div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
+        div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
+        grid.appendChild(div);
+    }
 }
 
 function renderMonths() {
@@ -193,6 +242,7 @@ function updateCurrentMonthStats() {
     document.getElementById('curTania').innerText = '₴' + t.toLocaleString();
 }
 
+// Оновлена функція рендеру з захистом від split
 function render() {
     const list = document.getElementById('hList'); 
     const grid = document.getElementById('catGrid'); 
@@ -203,14 +253,18 @@ function render() {
     let catTotals = {};
 
     s.d.forEach(i => {
-        if(i.mId !== s.mF) return; // Фільтр місяця
-        if(s.uF !== 'All' && i.u !== s.uF) return; // Фільтр юзера
+        if(i.mId !== s.mF) return; 
+        if(s.uF !== 'All' && i.u !== s.uF) return;
 
         // Рахуємо статистику
-        if(i.m && i.m.includes("Карта")) cardSum += i.a; else cashSum += i.a;
+        const isCard = i.m && i.m.includes("Карта");
+        if(isCard) cardSum += i.a; else cashSum += i.a;
         if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
 
-        if(s.cF && i.c !== s.cF) return; // Фільтр категорії
+        if(s.cF && i.c !== s.cF) return;
+
+        // Отримуємо іконку методу (безпечно)
+        const methodIcon = i.m ? i.m.split(' ')[0] : '💳';
 
         const card = document.createElement('div');
         card.className = 'liquid-glass p-4 border-l-4 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
@@ -219,7 +273,7 @@ function render() {
                 <div class="flex justify-between items-center">
                     <div>
                         <p class="font-bold text-[11px]">${i.c}</p>
-                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p>
+                        <p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${methodIcon}</p>
                     </div>
                     <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
                 </div>
