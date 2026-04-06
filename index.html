@@ -211,7 +211,7 @@
                 const dateObj = new Date(item.date);
                 const mId = dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2);
                 return {
-                    u: item.who || 'Влад', c: item.categoria || 'Інше', sc: item.subcategoria || '',
+                    u: item.who || 'Влад', c: item.categoria || 'Інше', sc: item.subcategory || '',
                     a: parseFloat(item.sum) || 0, m: item.metod || '💳 Карта', cm: item.comm || '',
                     mId: mId, mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
                     d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
@@ -282,7 +282,7 @@
 
             const { error } = await sb.from('expenses').insert([{
                 date: new Date().toISOString(), who: s.u, categoria: s.c,
-                subcategoria: s.sc, sum: parseFloat(amtI.value), metod: s.m,
+                subcategory: s.sc, sum: parseFloat(amtI.value), metod: s.m,
                 comm: document.getElementById('comment').value
             }]);
 
