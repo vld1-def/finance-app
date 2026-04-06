@@ -2,7 +2,7 @@
 <html lang="uk" style="background: #000; height: 100%;">
 <head>
     <meta charset="UTF-8">
-    <title>Finance Pro AI</title>
+    <title>Glass Finance AI Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,19 +21,16 @@
         .safe-area { padding: env(safe-area-inset-top) 16px env(safe-area-inset-bottom) 16px; display: flex; flex-direction: column; height: 100%; background: #000; }
         .liquid-glass { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 18px; }
         
-        /* Юзери пігулки */
-        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 8px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
+        .btn-user { background: var(--glass); border: 1px solid var(--glass-border); opacity: 0.4; transition: 0.2s; padding: 10px 0; flex: 1; text-align: center; font-size: 11px; font-weight: 600; border-radius: 10px; text-transform: uppercase; }
         .btn-user.active { opacity: 1; background: #fff; color: #000; border-color: #fff; }
 
-        /* Категорії */
-        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 12px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.2s; }
+        .cat-card { background: var(--glass); border: 1px solid var(--glass-border); padding: 14px; border-radius: 16px; display: flex; align-items: center; gap: 8px; font-size: 12px; transition: 0.2s; }
         .cat-card.active { background: #6366f1; border-color: #818cf8; transform: scale(0.97); }
 
-        /* Підкатегорії */
-        .sub-chip { background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); padding: 7px 12px; border-radius: 12px; font-size: 10px; white-space: nowrap; transition: 0.2s; flex-shrink: 0; }
-        .sub-chip.active { background: #fff; color: #000; border-color: #fff; }
+        /* Підкатегорії чіпи */
+        .sub-chip { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 8px 14px; border-radius: 12px; font-size: 10px; white-space: nowrap; transition: 0.2s; flex-shrink: 0; }
+        .sub-chip.active { background: #fff; color: #000; border-color: #fff; transform: scale(1.05); }
 
-        /* Аналітика Drawer */
         #historyDrawer { 
             position: fixed; top: 0; right: -100%; width: 100%; height: 100%; 
             background: rgba(0,0,0,0.98); backdrop-filter: blur(40px); 
@@ -42,30 +39,45 @@
             display: flex; flex-direction: column;
         }
         #historyDrawer.open { right: 0; }
-        #hList { flex: 1; overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 80px; }
-
-        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
-        .stat-chip { min-width: 110px; padding: 10px; background: var(--glass); border-radius: 14px; border: 1px solid var(--glass-border); transition: 0.2s; }
-        .stat-chip.selected { background: #6366f1; border-color: #fff; }
         
-        .month-chip.active { background-color: #fff !important; color: #000 !important; border-color: #fff !important; }
-
-        /* Кнопка AI ✨ */
-        .ai-btn { background: linear-gradient(135deg, #6366f1, #a855f7); animation: ai-pulse 3s infinite; }
-        @keyframes ai-pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.8; } }
-
-        /* AI Modal */
-        #aiModal { display: none; position: fixed; inset: 0; z-index: 100; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); }
-        .ai-glass-modal { background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(168, 85, 247, 0.2)); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 32px; padding: 24px; width: 100%; max-width: 320px; transform: scale(0.9); opacity: 0; transition: 0.3s; }
-        #aiModal.active .ai-glass-modal { transform: scale(1); opacity: 1; }
+        #hList { flex: 1; overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 40px; }
+        .cat-grid-stats { display: grid; grid-template-rows: repeat(2, 1fr); grid-auto-flow: column; gap: 8px; overflow-x: auto; padding-bottom: 10px; }
+        .stat-chip { min-width: 110px; padding: 10px; background: var(--glass); border-radius: 12px; border: 1px solid var(--glass-border); }
+        .stat-chip.selected { background: #6366f1; border-color: #fff; }
 
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        #amount { font-size: 4rem; font-weight: 200; pointer-events: auto; }
+        .month-chip.active { background-color: #fff !important; color: #000 !important; border-color: #fff !important; }
+
+        /* AI Modal & Button */
+        .ai-btn { background: linear-gradient(135deg, #6366f1, #a855f7); animation: ai-pulse 3s infinite; }
+        @keyframes ai-pulse { 0% { opacity: 0.8; } 50% { opacity: 1; transform: scale(1.05); } 100% { opacity: 0.8; } }
+        #aiModal { display: none; position: fixed; inset: 0; z-index: 100; align-items: center; justify-content: center; padding: 24px; background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(10px); }
+        .ai-glass-modal { background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15)); backdrop-filter: blur(40px); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 32px; padding: 24px; width: 100%; max-width: 320px; transform: scale(0.9); opacity: 0; transition: 0.3s; }
+        #aiModal.active .ai-glass-modal { transform: scale(1); opacity: 1; }
+        .ai-title-gradient { background: linear-gradient(135deg, #a5b4fc, #d8b4fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900; }
     </style>
 </head>
 <body>
-    <div class="safe-area">
+    <div class="safe-area" id="mainContainer">
+        <!-- AI Modal -->
+        <div id="aiModal" onclick="closeAIModal()">
+            <div class="ai-glass-modal" onclick="event.stopPropagation()">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-[10px] font-black tracking-[0.3em] text-indigo-400 uppercase mb-1">AI Аналітика</p>
+                        <h3 class="text-xl ai-title-gradient uppercase tracking-tighter">Підсумки</h3>
+                    </div>
+                    <button onclick="closeAIModal()" class="text-white/40 text-2xl">&times;</button>
+                </div>
+                <p id="aiModalText" class="text-sm leading-relaxed text-white/90 italic mb-6">Магія трапляється...</p>
+                <button onclick="closeAIModal()" class="w-full py-3 rounded-2xl bg-white/10 border border-white/10 text-white/80 text-xs font-bold uppercase tracking-widest active:scale-95 transition-all">Зрозуміло</button>
+            </div>
+        </div>
+
         <!-- Header -->
         <div class="flex gap-2 mb-4 mt-2">
             <div class="liquid-glass flex-1 p-3 text-center">
@@ -79,19 +91,20 @@
             <button onclick="openAIModal()" class="liquid-glass ai-btn px-6 flex items-center text-xl">✨</button>
         </div>
 
-        <div class="flex gap-2 mb-5">
+        <div class="flex gap-2 mb-6">
             <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
             <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
         </div>
 
-        <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-6">
-            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-1 text-7xl font-thin text-white">
+        <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-6" style="touch-action: pan-y;">
+            <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-2 text-white">
             
             <div class="flex gap-2 px-8">
                 <button onclick="setMethod('💳 Карта', this)" class="btn-user h-10 active">💳 Карта</button>
                 <button onclick="setMethod('💵 Готівка', this)" class="btn-user h-10">💵 Готівка</button>
             </div>
 
+            <!-- Головні категорії -->
             <div class="grid grid-cols-2 gap-2">
                 <div onclick="setCat('🛒 Продукти', this)" class="cat-card">🛒 Продукти</div>
                 <div onclick="setCat('☕️ Кафе/Їжа', this)" class="cat-card">☕️ Кафе</div>
@@ -101,8 +114,8 @@
                 <div onclick="setCat('📦 Інше', this)" class="cat-card">📦 Інше</div>
             </div>
 
-            <!-- Контейнер підкатегорій -->
-            <div id="subContainer" class="hidden px-1">
+            <!-- Блок підкатегорій -->
+            <div id="subContainer" class="hidden">
                 <div id="subGrid" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
             </div>
 
@@ -117,7 +130,7 @@
     <!-- Analytics Drawer -->
     <div id="historyDrawer">
         <div class="flex justify-between items-center py-2 text-white">
-            <h2 class="text-sm font-bold uppercase opacity-50">Аналітика</h2>
+            <h2 class="text-sm font-bold uppercase opacity-50 tracking-tight">Аналітика</h2>
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
 
@@ -135,7 +148,7 @@
         </div>
 
         <div class="mb-4">
-            <div id="catGrid" class="cat-grid-stats no-scrollbar px-1 py-1"></div>
+            <div id="catGrid" class="cat-grid-stats no-scrollbar py-1"></div>
         </div>
 
         <div class="flex gap-2 mb-4">
@@ -143,43 +156,27 @@
             <button id="fVlad" onclick="fH('Влад', this)" class="btn-user">Влад</button>
             <button id="fTania" onclick="fH('Таня', this)" class="btn-user">Таня</button>
         </div>
+
         <div id="hList" class="no-scrollbar"></div>
     </div>
 
-    <!-- AI Modal -->
-    <div id="aiModal" onclick="closeAIModal()">
-        <div class="ai-glass-modal" onclick="event.stopPropagation()">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <p class="text-[10px] font-black tracking-widest text-indigo-400 uppercase mb-1">AI GLASS ASSISTANT</p>
-                    <h3 class="text-xl font-bold uppercase italic">Підсумки</h3>
-                </div>
-                <button onclick="closeAIModal()" class="text-white/40 text-2xl">&times;</button>
-            </div>
-            <p id="aiModalText" class="text-sm leading-relaxed text-white/90 italic mb-6">Магія трапляється...</p>
-            <button onclick="closeAIModal()" class="w-full py-3 rounded-2xl bg-white/10 text-white/80 text-[10px] font-bold uppercase tracking-widest">Зрозуміло</button>
-        </div>
-    </div>
-
     <script>
-        // --- CONFIG ---
-        const SUPABASE_URL = 'ТВІЙ_URL';
-        const SUPABASE_KEY = 'ТВІЙ_ANON_KEY';
+        const SUPABASE_URL = 'https://xezhbqcteaihrlrykbkr.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
         const { createClient } = supabase;
         const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let s = { u: '', c: '', sc: '', m: '💳 Карта', d: [], subs: [], uF: 'All', cF: null, mF: '' };
         const months = ["Січ", "Лют", "Бер", "Квіт", "Трав", "Черв", "Лип", "Серп", "Вер", "Жовт", "Лист", "Груд"];
 
-        // --- BUTTONS ---
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
         function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
         function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
 
-        // --- SUB-CATEGORIES LOGIC ---
+        // ПІДКАТЕГОРІЇ
         function setCat(n, el) {
-            s.c = n; s.sc = '';
+            s.c = n; s.sc = ''; 
             document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
             el.classList.add('active');
             
@@ -201,26 +198,23 @@
             el.classList.add('active');
         }
 
-        // --- DATA LOADING ---
-        async function init() {
+        async function loadData() {
+            // Завантажуємо підкатегорії
             const { data: subData } = await sb.from('subcategory').select('*');
             s.subs = subData || [];
-            loadData();
-        }
 
-        async function loadData() {
+            // Завантажуємо витрати
             const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
             if (error) return console.error(error);
 
             s.d = data.map(item => {
-                const d = new Date(item.date);
-                const mId = d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2);
+                const dateObj = new Date(item.date);
+                const mId = dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2);
                 return {
-                    u: item.who, c: item.categoria, sc: item.subcategoria,
-                    a: parseFloat(item.sum), m: item.metod, cm: item.comm,
-                    mId: mId,
-                    mLab: months[d.getMonth()] + " " + d.getFullYear().toString().slice(-2),
-                    dFull: d.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+                    u: item.who || 'Влад', c: item.categoria || 'Інше', sc: item.subcategoria || '',
+                    a: parseFloat(item.sum) || 0, m: item.metod || '💳 Карта', cm: item.comm || '',
+                    mId: mId, mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
+                    d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
                 };
             });
 
@@ -231,49 +225,36 @@
 
         function renderMonths() {
             const container = document.getElementById('monthSelector');
+            if (!container) return;
             container.innerHTML = '';
-            const monthsMap = {};
-            s.d.forEach(i => { monthsMap[i.mId] = i.mLab; });
-            Object.keys(monthsMap).sort().reverse().forEach(id => {
+            const uniqueMonths = {};
+            s.d.forEach(i => { uniqueMonths[i.mId] = i.mLab; });
+            Object.keys(uniqueMonths).sort().reverse().forEach(mId => {
                 const div = document.createElement('div');
-                div.className = `month-chip ${s.mF === id ? 'active' : ''} bg-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer whitespace-nowrap border border-white/5`;
-                div.innerText = monthsMap[id];
-                div.onclick = (e) => { e.stopPropagation(); s.mF = id; renderMonths(); render(); };
+                div.className = `month-chip ${s.mF === mId ? 'active' : ''} bg-white/10 px-4 py-1.5 rounded-xl text-[10px] font-bold cursor-pointer whitespace-nowrap border border-white/5`;
+                div.innerText = uniqueMonths[mId];
+                div.onclick = (e) => { e.stopPropagation(); s.mF = mId; renderMonths(); render(); };
                 container.appendChild(div);
             });
         }
 
         function render() {
-            const list = document.getElementById('hList');
-            const grid = document.getElementById('catGrid');
+            const list = document.getElementById('hList'); 
+            const grid = document.getElementById('catGrid'); 
             list.innerHTML = ''; grid.innerHTML = '';
             let vS = 0, tS = 0, cardS = 0, cashS = 0, catTotals = {};
 
             s.d.forEach(i => {
-                if(i.mId !== s.mF) return; // Фільтр місяця
-
+                if(i.mId !== s.mF) return;
                 if (i.u === 'Влад') vS += i.a; else if (i.u === 'Таня') tS += i.a;
-
-                if(s.uF !== 'All' && i.u !== s.uF) return; // Фільтр юзера
-
+                if(s.uF !== 'All' && i.u !== s.uF) return;
                 if(i.m && i.m.includes("Карта")) cardS += i.a; else cashS += i.a;
                 if(!catTotals[i.c]) catTotals[i.c] = 0; catTotals[i.c] += i.a;
-
-                if(s.cF && i.c !== s.cF) return; // Фільтр категорії
+                if(s.cF && i.c !== s.cF) return;
 
                 const card = document.createElement('div');
                 card.className = 'liquid-glass p-4 border-l-4 mb-2 ' + (i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500');
-                card.innerHTML = `
-                    <div class="flex flex-col text-white">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="font-bold text-[11px]">${i.c}${i.sc ? ' › '+i.sc : ''}</p>
-                                <p class="text-[8px] opacity-40 uppercase">${i.dFull} • ${i.m.split(' ')[0]}</p>
-                            </div>
-                            <p class="font-bold text-xs">₴${i.a.toLocaleString()}</p>
-                        </div>
-                        ${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}
-                    </div>`;
+                card.innerHTML = `<div class="flex flex-col text-white"><div class="flex justify-between items-center"><div><p class="font-bold text-[11px]">${i.c}${i.sc ? ' › '+i.sc : ''}</p><p class="text-[8px] opacity-40 uppercase">${i.d} • ${i.u} • ${i.m.split(' ')[0]}</p></div><p class="font-bold text-xs">₴${i.a.toLocaleString()}</p></div>${i.cm ? `<p class="text-[9px] italic opacity-60 mt-1 bg-white/5 p-1.5 rounded-lg">💬 ${i.cm}</p>` : ''}</div>`;
                 list.appendChild(card);
             });
 
@@ -284,19 +265,48 @@
 
             for (let name in catTotals) {
                 const div = document.createElement('div');
-                div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''}`;
+                div.className = `stat-chip flex-shrink-0 ${s.cF === name ? 'selected' : ''} bg-white/5 p-3 rounded-xl border border-white/10`;
+                if (s.cF === name) div.classList.add('bg-indigo-600', 'border-white');
                 div.onclick = () => { s.cF = (s.cF === name) ? null : name; render(); };
                 div.innerHTML = `<p class="text-[8px] opacity-50 truncate uppercase font-bold text-white">${name}</p><p class="font-black text-xs text-white">₴${catTotals[name].toLocaleString()}</p>`;
                 grid.appendChild(div);
             }
         }
 
-        // --- AI LOGIC ---
+        async function save() {
+            const amtI = document.getElementById('amount');
+            const btn = document.getElementById('saveBtn');
+            if(!s.u || !s.c || !amtI.value) return alert('Заповни все!');
+            btn.disabled = true;
+            document.getElementById('btnText').innerHTML = '<span class="loader"></span>';
+
+            const { error } = await sb.from('expenses').insert([{
+                date: new Date().toISOString(), who: s.u, categoria: s.c,
+                subcategoria: s.sc, sum: parseFloat(amtI.value), metod: s.m,
+                comm: document.getElementById('comment').value
+            }]);
+
+            if (error) { alert("Error: " + error.message); btn.disabled = false; return; }
+
+            confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
+            document.getElementById('btnText').innerHTML = 'DONE ✅';
+            btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
+
+            setTimeout(() => {
+                amtI.value = ''; document.getElementById('comment').value = '';
+                document.getElementById('subContainer').classList.add('hidden');
+                btn.disabled = false; document.getElementById('btnText').innerHTML = 'ЗБЕРЕГТИ';
+                btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
+                loadData(); 
+            }, 1000);
+        }
+
+        // --- AI MODAL ---
         function openAIModal() {
             const modal = document.getElementById('aiModal');
             const currentData = s.d.filter(i => i.mId === s.mF);
             if (currentData.length === 0) {
-                document.getElementById('aiModalText').innerText = "У цьому місяці поки порожньо. Гроші в безпеці! 😉";
+                document.getElementById('aiModalText').innerText = "Поки порожньо. Гроші в безпеці! 😉";
             } else {
                 let v = 0, t = 0, cats = {}, comms = [];
                 currentData.forEach(i => {
@@ -305,20 +315,14 @@
                     if(i.cm) comms.push(i.cm.toLowerCase());
                 });
                 const top = Object.keys(cats).reduce((a, b) => cats[a] > cats[b] ? a : b);
-                
-                let report = `Привіт! Глянув я ваші чеки... 👀\n\n`;
-                report += (v > t) ? `🤵‍♂️ Влад цього місяця лідирує (₴${v.toLocaleString()}). ` : `💃 Таня витратила більше (₴${t.toLocaleString()}). `;
-                report += `Найбільше коштів з'їла категорія "${top}".\n\n`;
-                
-                if (comms.some(c => c.includes("сільпо") || c.includes("атб"))) report += "Пора вже купувати акції супермаркетів, ви там занадто часто! 🛒\n";
-                if (comms.some(c => c.includes("кава") || c.includes("мак"))) report += "Кофеїн та швидка їжа — це звісно смачно, але гаманець сумує. ☕\n";
-                
-                const day = new Date().getDate();
-                report += `\nВ середньому ви витрачаєте ₴${((v+t)/day).toFixed(0)} на день.`;
+                let report = (v > t) ? `🤵‍♂️ Влад лідирує (₴${v.toLocaleString()}). ` : `💃 Таня витратила більше (₴${t.toLocaleString()}). `;
+                report += `Топ категорія: ${top}. `;
+                if (comms.some(c => c.includes("сільпо"))) report += "\nЧасті візити в Сільпо зафіксовані! 🛒";
                 document.getElementById('aiModalText').innerText = report;
             }
             modal.style.display = 'flex';
             setTimeout(() => modal.classList.add('active'), 10);
+            if (window.navigator.vibrate) window.navigator.vibrate(20);
         }
 
         function closeAIModal() {
@@ -327,49 +331,22 @@
             setTimeout(() => modal.style.display = 'none', 300);
         }
 
-        // --- SAVE LOGIC ---
-        async function save() {
-            const amt = document.getElementById('amount').value;
-            if(!s.u || !s.c || !amt) return alert('Заповни все!');
-            const btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            document.getElementById('btnText').innerHTML = '<span class="loader"></span>';
-
-            const { error } = await sb.from('expenses').insert([{
-                date: new Date().toISOString(), who: s.u, categoria: s.c,
-                subcategoria: s.sc, sum: parseFloat(amt), metod: s.m,
-                comm: document.getElementById('comment').value
-            }]);
-
-            if (error) { alert(error.message); btn.disabled = false; return; }
-
-            confetti({ particleCount: 40, spread: 50, origin: { y: 0.8 } });
-            document.getElementById('btnText').innerHTML = 'DONE ✅';
-            btn.style.backgroundColor = '#22c55e'; btn.style.color = '#fff';
-
-            setTimeout(() => {
-                document.getElementById('amount').value = '';
-                document.getElementById('comment').value = '';
-                document.getElementById('subContainer').classList.add('hidden');
-                document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-                btn.disabled = false; document.getElementById('btnText').innerHTML = 'ЗБЕРЕГТИ';
-                btn.style.backgroundColor = '#fff'; btn.style.color = '#000';
-                loadData(); 
-            }, 1000);
-        }
-
         // --- SWIPES ---
-        let tStartX = 0; let tStartY = 0;
-        document.addEventListener('touchstart', (e) => { tStartX = e.changedTouches[0].screenX; tStartY = e.changedTouches[0].screenY; }, { passive: true });
+        let touchStartX = 0; let touchStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, { passive: true });
+
         document.addEventListener('touchend', (e) => {
-            const dx = tStartX - e.changedTouches[0].screenX;
-            const dy = tStartY - e.changedTouches[0].screenY;
+            const dx = touchStartX - e.changedTouches[0].screenX;
+            const dy = touchStartY - e.changedTouches[0].screenY;
             if (Math.abs(dx) > Math.abs(dy) * 3 && Math.abs(dx) > 70) {
                 if (dx > 0) toggleDrawer(true); else toggleDrawer(false);
             }
         }, { passive: true });
 
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
 </html>
