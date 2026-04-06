@@ -145,24 +145,77 @@
         function toggleDrawer(o) { document.getElementById('historyDrawer').classList.toggle('open', o); }
         function fH(u, el) { s.uF = u; el.parentElement.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); render(); }
 
-        // --- SUB-CATEGORIES ---
-        function setCat(n, el) {
-            s.c = n; s.sc = ''; 
-            document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
-            el.classList.add('active');
-            
-            // Фільтрація: назва в базі може бути БЕЗ емодзі
-            const filtered = s.subs.filter(sub => n.includes(sub.category));
-            const container = document.getElementById('subContainer');
-            const grid = document.getElementById('subGrid');
-            
-            if (filtered.length > 0) {
-                container.classList.remove('hidden');
-                grid.innerHTML = filtered.map(sub => `<div onclick="setSub('${sub.name}', this)" class="sub-chip cursor-pointer">${sub.name}</div>`).join('');
-            } else {
-                container.classList.add('hidden');
-            }
+        // --- LOAD DATA (Виправлено завантаження підкатегорій) ---
+async function loadData() {
+    try {
+        // 1. Спочатку вантажимо підкатегорії
+        const { data: subData, error: subError } = await sb.from('subcategory').select('*');
+        if (subError) {
+            console.error("Помилка завантаження підкатегорій:", subError);
+        } else {
+            s.subs = subData || [];
+            console.log("Підкатегорії завантажено:", s.subs.length);
         }
+
+        // 2. Потім вантажимо витрати
+        const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
+        if (error) throw error;
+
+        s.d = data.map(item => {
+            const dateObj = new Date(item.date);
+            const mId = dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2);
+            return {
+                u: item.who || 'Влад', 
+                c: item.categoria || 'Інше', 
+                sc: item.subcategory || '', // переконайся, що в expenses стовпець названо так
+                a: parseFloat(item.sum) || 0, 
+                m: item.metod || '💳 Карта', 
+                cm: item.comm || '',
+                mId: mId, 
+                mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
+                d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+            };
+        });
+
+        if (!s.mF && s.d.length > 0) s.mF = s.d[0].mId;
+        renderMonths();
+        render();
+    } catch (err) {
+        console.error("Критична помилка завантаження:", err);
+    }
+}
+
+// --- SET CAT (Виправлено логіку пошуку підкатегорій) ---
+function setCat(n, el) {
+    s.c = n; 
+    s.sc = ''; // скидаємо стару підкатегорію
+    document.querySelectorAll('.cat-card').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    
+    // Очищаємо назву категорії від емодзі для точного пошуку
+    const cleanCatName = n.replace(/[\u{1F300}-\u{1F9FF}]/gu, "").trim();
+    console.log("Шукаємо підкатегорії для:", cleanCatName);
+
+    // Шукаємо збіги (або повна назва, або назва без емодзі)
+    const filtered = s.subs.filter(sub => 
+        sub.category.trim() === cleanCatName || n.includes(sub.category.trim())
+    );
+
+    const container = document.getElementById('subContainer');
+    const grid = document.getElementById('subGrid');
+    
+    if (filtered.length > 0) {
+        container.classList.remove('hidden');
+        grid.innerHTML = filtered.map(sub => `
+            <div onclick="setSub('${sub.name}', this)" class="sub-chip cursor-pointer">
+                ${sub.name}
+            </div>
+        `).join('');
+    } else {
+        console.log("Підкатегорій не знайдено");
+        container.classList.add('hidden');
+    }
+}
 
         function setSub(n, el) {
             s.sc = n;
@@ -170,33 +223,7 @@
             el.classList.add('active');
         }
 
-        // --- LOAD DATA ---
-        async function loadData() {
-            // Завантажуємо підкатегорії
-            const { data: subData } = await sb.from('subcategory').select('*');
-            s.subs = subData || [];
-
-            // Завантажуємо витрати
-            const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
-            if (error) return console.error(error);
-
-            s.d = data.map(item => {
-                const dateObj = new Date(item.date);
-                const mId = dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2);
-                return {
-                    u: item.who || 'Влад', c: item.categoria || 'Інше', sc: item.subcategory || '',
-                    a: parseFloat(item.sum) || 0, m: item.metod || '💳 Карта', cm: item.comm || '',
-                    mId: mId, mLab: months[dateObj.getMonth()] + " " + dateObj.getFullYear().toString().slice(-2),
-                    d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
-                };
-            });
-
-            if (!s.mF && s.d.length > 0) s.mF = s.d[0].mId;
-            else if (!s.mF) s.mF = new Date().getFullYear() + "-" + ("0" + (new Date().getMonth() + 1)).slice(-2);
-
-            renderMonths();
-            render();
-        }
+        
 
         function renderMonths() {
             const container = document.getElementById('monthSelector');
