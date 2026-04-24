@@ -18,17 +18,15 @@
             --accent-grad: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
         }
         /* Онови цей блок */
-        html, body { 
-            background-color: #000 !important; 
-            color: #fff; 
-            margin: 0; 
-            padding: 0; 
-            height: 100dvh; /* Використовуємо динамічну висоту */
-            width: 100%; 
-            overflow: hidden; 
-            font-family: -apple-system, system-ui, sans-serif; 
-            position: fixed;
-        }
+       html, body { 
+    background-color: #000 !important; 
+    margin: 0; padding: 0; 
+    height: 100dvh; /* Динамічна висота для Safari */
+    width: 100%; 
+    overflow: hidden; 
+    position: fixed; /* Блокує підстрибування сторінки */
+}
+
         .liquid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #000; overflow: hidden; }
         .blob { position: absolute; width: 400px; height: 400px; background: #6366f1; filter: blur(90px); border-radius: 50%; opacity: 0.15; animation: move 20s infinite alternate; }
         .blob-2 { background: #a855f7; right: -100px; top: 20%; animation-duration: 25s; opacity: 0.1; }
@@ -40,17 +38,17 @@
     position: fixed; 
     bottom: 0; 
     left: 0; 
-    width: 100%; 
-    /* Зменшуємо загальну висоту і робимо її залежною від зони iPhone */
+    right: 0;
+    /* Висота панелі тепер мінімально необхідна */
     height: calc(55px + env(safe-area-inset-bottom)); 
-    background: rgba(10, 10, 10, 0.85); 
+    background: rgba(15, 15, 15, 0.85); 
     backdrop-filter: blur(40px); 
     -webkit-backdrop-filter: blur(40px);
-    border-top: 1px solid var(--glass-border); 
+    border-top: 0.5px solid rgba(255,255,255,0.1);
     display: flex; 
     justify-content: space-around; 
-    align-items: flex-start; /* Притискаємо іконки до верху панелі */
-    padding-top: 10px; /* Відступ іконок від верхнього краю панелі */
+    align-items: flex-start; /* Іконки зверху */
+    padding-top: 8px;
     padding-bottom: env(safe-area-inset-bottom); 
     z-index: 1000; 
 }
@@ -59,8 +57,7 @@
         /* Онови блок центральної кнопки */
 .add-btn-wrap { 
     position: fixed; 
-    /* Робимо позицію кнопки залежною від нижньої зони */
-    bottom: calc(25px + env(safe-area-inset-bottom)); 
+    bottom: calc(20px + env(safe-area-inset-bottom)); 
     left: 50%; 
     transform: translateX(-50%); 
     z-index: 1100; 
@@ -115,6 +112,28 @@
 select option {
     background-color: #1a1a1a;
     color: white;
+}
+        /* Новий стиль для селектора днів */
+.day-chip {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.4);
+    transition: 0.2s;
+}
+.day-chip.active {
+    background: #fff;
+    color: #000;
+    border-color: #fff;
+    transform: scale(1.1);
 }
     </style>
 </head>
@@ -238,15 +257,12 @@ select option {
             <section id="history" class="screen">
     <div class="glass-card p-4 mb-4 space-y-3">
         <div class="flex gap-2">
-            <select id="histUserF" onchange="s.uF_hist = this.value; renderHistory();" class="flex-1 bg-white/10 p-2 rounded-xl text-[10px] text-white outline-none border border-white/10">
-                <option value="All">Всі юзери</option>
-                <option value="Влад">Влад</option>
-                <option value="Таня">Таня</option>
-            </select>
-            <select id="histCatF" onchange="s.cF_hist = this.value; renderHistory();" class="flex-1 bg-white/10 p-2 rounded-xl text-[10px] text-white outline-none border border-white/10">
-                <!-- Категорії додадуться динамічно -->
-            </select>
+            <!-- Стилізовані селектори -->
+            <select id="histUserF" onchange="s.uF_hist = this.value; renderHistory();" class="flex-1"></select>
+            <select id="histCatF" onchange="s.cF_hist = this.value; renderHistory();" class="flex-1"></select>
         </div>
+        <!-- Селектор днів -->
+        <div id="daySelector" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
     </div>
     <div id="hList" class="space-y-2"></div>
 </section>
@@ -293,6 +309,7 @@ select option {
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
+    dayF_hist: 'All'
 };
         let charts = { pie: null, bar: null, daily: null };
 
@@ -362,14 +379,18 @@ select option {
         }
 
         // --- OVERVIEW (Month Stepper & Category Blocks) ---
-        function stepMonth(dir) {
-            let idx = s.uniqueMonths.indexOf(s.mF);
-            idx += dir;
-            if (idx >= 0 && idx < s.uniqueMonths.length) {
-                s.mF = s.uniqueMonths[idx];
-                renderOverview();
-            }
+       function stepMonth(dir) {
+    let idx = s.uniqueMonths.indexOf(s.mF);
+    idx += dir;
+    if (idx >= 0 && idx < s.uniqueMonths.length) {
+        s.mF = s.uniqueMonths[idx];
+        s.dayF_hist = 'All'; // Скидаємо вибраний день при зміні місяця
+        renderOverview();
+        if (document.getElementById('history').classList.contains('active')) {
+            renderHistory();
         }
+    }
+}
 
         function filterHomeUser(user) {
     // Якщо клікнули на того самого — скидаємо на "Всі"
@@ -541,47 +562,46 @@ function renderOverview() {
         }
 
         function renderHistory() {
-    const currentMonthData = s.d.filter(i => i.mId === s.mF);
+    const monthData = s.d.filter(i => i.mId === s.mF);
     
-    // Оновлюємо список категорій у фільтрі
-    const catSelect = document.getElementById('histCatF');
-    if (catSelect) {
-        // Збираємо унікальні категорії лише для поточного місяця
-        const cats = ['All', ...new Set(currentMonthData.map(i => i.c))];
-        const currentVal = s.cF_hist;
-        catSelect.innerHTML = cats.map(c => `<option value="${c}" ${currentVal === c ? 'selected' : ''}>${c === 'All' ? 'Всі категорії' : c}</option>`).join('');
+    // Малюємо дні
+    renderDaySelector();
+
+    // Оновлюємо фільтри юзерів та категорій (якщо треба)
+    const uSelect = document.getElementById('histUserF');
+    const cSelect = document.getElementById('histCatF');
+    
+    if (uSelect && uSelect.options.length === 0) {
+        uSelect.innerHTML = `<option value="All">Всі юзери</option><option value="Влад">Влад</option><option value="Таня">Таня</option>`;
+    }
+    
+    if (cSelect) {
+        const cats = ['All', ...new Set(monthData.map(i => i.c))];
+        cSelect.innerHTML = cats.map(c => `<option value="${c}" ${s.cF_hist === c ? 'selected' : ''}>${c === 'All' ? 'Всі категорії' : c}</option>`).join('');
     }
 
-    // Фільтрація даних
-    const filtered = currentMonthData.filter(i => {
-        const uMatch = s.uF_hist === 'All' || i.u === s.uF_hist;
-        const cMatch = s.cF_hist === 'All' || i.c === s.cF_hist;
-        return uMatch && cMatch;
+    // Фільтрація
+    const filtered = monthData.filter(i => {
+        const uM = s.uF_hist === 'All' || i.u === s.uF_hist;
+        const cM = s.cF_hist === 'All' || i.c === s.cF_hist;
+        const dM = s.dayF_hist === 'All' || i.d.startsWith(s.dayF_hist); // Перевірка чи дата починається з "DD"
+        return uM && cM && dM;
     });
 
-    const hList = document.getElementById('hList');
-    if (filtered.length === 0) {
-        hList.innerHTML = `<div class="text-center opacity-30 py-10 text-xs">Записів не знайдено</div>`;
-        return;
-    }
-
-    hList.innerHTML = filtered.map(i => `
-        <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'} mb-2">
+    document.getElementById('hList').innerHTML = filtered.length ? filtered.map(i => `
+        <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
             <div class="flex justify-between items-center">
                 <div>
-                    <p class="font-bold text-xs">${i.c}${i.sc ? ' › <span class="text-indigo-300">'+i.sc+'</span>' : ''}</p>
+                    <p class="font-bold text-[13px]">${i.c}${i.sc ? ' › <span class="opacity-50 text-[11px]">'+i.sc+'</span>' : ''}</p>
                     <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
-                    <button onclick="deleteExpense(${i.id})" class="p-2 opacity-20 active:opacity-100 transition-opacity">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
+                    <button onclick="deleteExpense(${i.id})" class="opacity-20">✕</button>
                 </div>
             </div>
-            ${i.cm ? `<p class="text-[10px] mt-2 opacity-50 italic font-light">"${i.cm}"</p>` : ''}
         </div>
-    `).join('');
+    `).join('') : `<div class="text-center opacity-20 py-10 text-xs">Немає витрат за цей день</div>`;
 }
         // --- АНАЛІТИКА (ВИПРАВЛЕНО) ---
 function renderAnalytics() {
@@ -652,7 +672,28 @@ function renderAnalytics() {
         }
     });
 }
+function renderDaySelector() {
+    const container = document.getElementById('daySelector');
+    if (!container) return;
+    
+    // Визначаємо кількість днів у вибраному місяці (s.mF має формат "YYYY-MM")
+    const [year, month] = s.mF.split('-').map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
 
+    let html = `<div onclick="setHistDay('All', this)" class="day-chip ${s.dayF_hist === 'All' ? 'active' : ''}">Всі</div>`;
+    
+    for (let i = 1; i <= daysInMonth; i++) {
+        const dStr = i.toString().padStart(2, '0');
+        html += `<div onclick="setHistDay('${dStr}', this)" class="day-chip ${s.dayF_hist === dStr ? 'active' : ''}">${dStr}</div>`;
+    }
+    
+    container.innerHTML = html;
+}
+
+function setHistDay(day, el) {
+    s.dayF_hist = day;
+    renderHistory();
+}
 // --- ГРАФІК ПО ДНЯХ (ВИПРАВЛЕНО) ---
 function renderDailyChart(data) {
     const days = {};
