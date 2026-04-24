@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="uk" style="background: #000; height: 100%;">
+<head>
+    <meta charset="UTF-8">
+    <title>Finance Liquid Pro v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent-grad: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        }
+        html, body { background-color: #000 !important; color: #fff; margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; }
+        .liquid-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; background: #000; overflow: hidden; }
+        .blob { position: absolute; width: 400px; height: 400px; background: #6366f1; filter: blur(90px); border-radius: 50%; opacity: 0.15; animation: move 20s infinite alternate; }
+        .blob-2 { background: #a855f7; right: -100px; top: 20%; animation-duration: 25s; opacity: 0.1; }
+        @keyframes move { from { transform: translate(0, 0); } to { transform: translate(100px, 100px); } }
+        .glass-card { background: var(--glass); backdrop-filter: blur(30px); border: 1px solid var(--glass-border); border-radius: 24px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .tab-bar { position: fixed; bottom: 0; left: 0; width: 100%; height: calc(70px + env(safe-area-inset-bottom)); background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(40px); border-top: 1px solid var(--glass-border); display: flex; justify-content: space-around; align-items: center; padding-bottom: env(safe-area-inset-bottom); z-index: 100; }
+        .tab-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: rgba(255,255,255,0.3); font-size: 10px; font-weight: 600; flex: 1; }
+        .tab-item.active { color: #fff; }
+        .add-btn-wrap { position: relative; top: -25px; z-index: 110; }
+        .add-btn { width: 64px; height: 64px; background: var(--accent-grad); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4); border: 4px solid #000; color: white; }
+        .user-btn { flex: 1; padding: 12px; text-align: center; border-radius: 14px; font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); transition: 0.2s; }
+        .user-btn.active { background: #fff; color: #000; }
+        .screen { display: none; height: 100%; overflow-y: auto; padding: 16px; padding-bottom: 140px; -webkit-overflow-scrolling: touch; }
+        .screen.active { display: flex; flex-direction: column; animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .loader { width: 18px; height: 18px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="liquid-bg"><div class="blob"></div><div class="blob blob-2"></div></div>
+
+    <div class="flex flex-col h-full pt-[env(safe-area-inset-top)]">
+        
+        <main class="flex-1 overflow-hidden relative">
+            
+            <!-- SCREEN 1: OVERVIEW -->
+            <section id="home" class="screen active">
+                <div class="flex gap-2 mb-6">
+                    <div class="glass-card flex-1 p-5 text-center">
+                        <p id="curVlad" class="text-2xl font-bold text-blue-400">₴0</p>
+                        <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Влад</p>
+                    </div>
+                    <div class="glass-card flex-1 p-5 text-center">
+                        <p id="curTania" class="text-2xl font-bold text-pink-400">₴0</p>
+                        <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Таня</p>
+                    </div>
+                </div>
+
+                <!-- Month Stepper -->
+                <div class="flex items-center justify-between glass-card px-6 py-4 mb-6">
+                    <button onclick="stepMonth(-1)" class="p-2 opacity-50 active:scale-90 transition-all text-xl">←</button>
+                    <div class="text-center">
+                        <p id="mLabel" class="text-sm font-bold tracking-tight">Завантаження...</p>
+                        <p class="text-[8px] opacity-30 uppercase font-black">Поточний період</p>
+                    </div>
+                    <button onclick="stepMonth(1)" class="p-2 opacity-50 active:scale-90 transition-all text-xl">→</button>
+                </div>
+
+                <!-- Categories Block -->
+                <div class="space-y-3">
+                    <h3 class="text-[10px] font-bold opacity-40 uppercase ml-2 tracking-widest">Витрати за категоріями</h3>
+                    <div id="catBlock" class="grid grid-cols-1 gap-2"></div>
+                </div>
+            </section>
+
+            <!-- SCREEN 2: ADD RECORD -->
+            <section id="add" class="screen">
+                <div class="glass-card p-6 space-y-6">
+                    <div class="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                        <button onclick="setUser('Влад', this)" class="user-btn active">ВЛАД</button>
+                        <button onclick="setUser('Таня', this)" class="user-btn">ТАНЯ</button>
+                    </div>
+
+                    <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-4 text-white text-8xl font-thin tracking-tighter">
+
+                    <div class="flex gap-2">
+                        <button onclick="setMethod('💳 Карта', this)" class="user-btn active text-[10px]">💳 КАРТА</button>
+                        <button onclick="setMethod('💵 Готівка', this)" class="user-btn text-[10px]">💵 ГОТІВКА</button>
+                    </div>
+
+                    <div id="catPicker" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto no-scrollbar">
+                        <!-- Динамічні категорії -->
+                    </div>
+
+                    <div id="subContainer" class="hidden"><div id="subGrid" class="flex gap-2 overflow-x-auto no-scrollbar py-2"></div></div>
+
+                    <input type="text" id="comment" placeholder="Коментар..." class="w-full bg-white/5 p-5 rounded-2xl text-center outline-none border border-white/5 text-sm">
+                    
+                    <button onclick="save()" id="saveBtn" class="w-full py-5 rounded-2xl font-black bg-white text-black uppercase text-xs tracking-[0.2em] active:scale-95 transition-all">
+                        <span id="btnText">ЗБЕРЕГТИ ВИТРАТУ</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- SCREEN 3: ANALYTICS -->
+            <section id="analytics" class="screen">
+                <div class="glass-card p-6 mb-6">
+                    <h3 class="text-xs font-bold uppercase opacity-40 mb-6 tracking-widest text-center">Розподіл витрат</h3>
+                    <div class="h-64 relative">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6 mb-6">
+                    <h3 class="text-xs font-bold uppercase opacity-40 mb-4 tracking-widest">Хто витрачає більше?</h3>
+                    <div class="h-40">
+                        <canvas id="barChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-2" id="topCatsList">
+                    <!-- Рейтинг категорій -->
+                </div>
+            </section>
+
+            <!-- SCREEN 4: OPTIONS (CRUD) -->
+            <section id="options" class="screen">
+                <div class="glass-card p-6 mb-6">
+                    <h3 class="text-sm font-bold mb-4">Керування категоріями</h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="newCatName" placeholder="Назва..." class="flex-1 bg-white/5 p-3 rounded-xl outline-none border border-white/10 text-xs">
+                        <button onclick="addCategory()" class="bg-white text-black px-4 rounded-xl text-xs font-bold">+</button>
+                    </div>
+                    <div id="manageCatsList" class="space-y-2"></div>
+                </div>
+
+                <div class="glass-card p-6">
+                    <h3 class="text-sm font-bold mb-4">Підкатегорії</h3>
+                    <select id="parentCatSelect" class="w-full bg-white/5 p-3 rounded-xl mb-3 border border-white/10 text-xs text-white outline-none"></select>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="newSubName" placeholder="Підкатегорія..." class="flex-1 bg-white/5 p-3 rounded-xl outline-none border border-white/10 text-xs">
+                        <button onclick="addSubcategory()" class="bg-white text-black px-4 rounded-xl text-xs font-bold">+</button>
+                    </div>
+                    <div id="manageSubsList" class="space-y-2"></div>
+                </div>
+            </section>
+
+            <!-- SCREEN 5: HISTORY (Hidden by default, triggered by Tab) -->
+            <section id="history" class="screen">
+                <div id="hList" class="space-y-2 pt-4"></div>
+            </section>
+
+        </main>
+
+        <!-- NAVIGATION -->
+        <nav class="tab-bar">
+            <div class="tab-item active" onclick="switchTab('home', this)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                Огляд
+            </div>
+            <div class="tab-item" onclick="switchTab('history', this)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Історія
+            </div>
+            
+            <div class="add-btn-wrap" onclick="switchTab('add', this)">
+                <button class="add-btn">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M12 6v12M6 12h12"></path></svg>
+                </button>
+            </div>
+
+            <div class="tab-item" onclick="switchTab('analytics', this)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Аналіз
+            </div>
+            <div class="tab-item" onclick="switchTab('options', this)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                Опції
+            </div>
+        </nav>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xezhbqcteaihrlrykbkr.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
+        const { createClient } = supabase;
+        const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        let s = { u: 'Влад', c: '', sc: '', m: '💳 Карта', d: [], cats: [], subs: [], mF: '', mIdx: 0, uniqueMonths: [] };
+        let charts = { pie: null, bar: null };
+
+        // --- CORE ---
+        function switchTab(id, el) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            if(el.classList.contains('tab-item')) el.classList.add('active');
+            if(id === 'analytics') renderAnalytics();
+        }
+
+        function setUser(n, el) { s.u = n; document.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+
+        // --- DB DATA ---
+        async function loadData() {
+            // Категорії
+            const { data: catData } = await sb.from('categories').select('*').order('name');
+            s.cats = catData || [];
+            
+            // Підкатегорії
+            const { data: subData } = await sb.from('subcategory').select('*');
+            s.subs = subData || [];
+
+            // Витрати
+            const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
+            if (error) return;
+
+            const monthsNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+            
+            s.d = data.map(item => {
+                const dateObj = new Date(item.date);
+                return {
+                    id: item.id, u: item.who, c: item.categoria, sc: item.subcategory, a: parseFloat(item.sum), 
+                    m: item.metod, cm: item.comm,
+                    mId: dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2), 
+                    mLab: monthsNames[dateObj.getMonth()] + " " + dateObj.getFullYear(),
+                    d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
+                };
+            });
+
+            const monthsSet = [...new Set(s.d.map(i => i.mId))].sort().reverse();
+            s.uniqueMonths = monthsSet;
+            if (!s.mF && monthsSet.length > 0) s.mF = monthsSet[0];
+            
+            renderOverview();
+            renderPickers();
+            renderManageList();
+        }
+
+        // --- OVERVIEW (Month Stepper & Category Blocks) ---
+        function stepMonth(dir) {
+            let idx = s.uniqueMonths.indexOf(s.mF);
+            idx += dir;
+            if (idx >= 0 && idx < s.uniqueMonths.length) {
+                s.mF = s.uniqueMonths[idx];
+                renderOverview();
+            }
+        }
+
+        function renderOverview() {
+            const currentData = s.d.filter(i => i.mId === s.mF);
+            const labelEl = document.getElementById('mLabel');
+            if (currentData.length > 0) labelEl.innerText = currentData[0].mLab;
+            else labelEl.innerText = "Дані відсутні";
+
+            let vlad = 0, tania = 0, catTotals = {};
+            currentData.forEach(i => {
+                if (i.u === 'Влад') vlad += i.a; else tania += i.a;
+                catTotals[i.c] = (catTotals[i.c] || 0) + i.a;
+            });
+
+            document.getElementById('curVlad').innerText = '₴' + vlad.toLocaleString();
+            document.getElementById('curTania').innerText = '₴' + tania.toLocaleString();
+
+            const block = document.getElementById('catBlock');
+            block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => `
+                <div class="glass-card p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-[10px] font-bold opacity-30 uppercase">${name}</p>
+                        <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
+                    </div>
+                    <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
+                        ${Math.round(sum / (vlad+tania) * 100)}%
+                    </div>
+                </div>
+            `).join('');
+
+            // Історія також фільтрується по місяцю
+            const hList = document.getElementById('hList');
+            hList.innerHTML = currentData.map(i => `
+                <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="font-bold text-xs">${i.c}${i.sc ? ' › '+i.sc : ''}</p>
+                            <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
+                            <button onclick="deleteExpense(${i.id})" class="opacity-20 text-xs">✕</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- PICKERS (Dynamic Categories) ---
+        function renderPickers() {
+            const picker = document.getElementById('catPicker');
+            picker.innerHTML = s.cats.map(c => `
+                <div onclick="selectCat('${c.name}', this)" class="cat-card border border-white/5">${c.name}</div>
+            `).join('');
+
+            const select = document.getElementById('parentCatSelect');
+            select.innerHTML = s.cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        }
+
+        function selectCat(name, el) {
+            s.c = name; s.sc = '';
+            document.querySelectorAll('#catPicker .cat-card').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
+            el.classList.add('active', 'bg-indigo-600');
+            
+            const filtered = s.subs.filter(sub => sub.category === name);
+            const container = document.getElementById('subContainer');
+            if (filtered.length > 0) {
+                container.classList.remove('hidden');
+                document.getElementById('subGrid').innerHTML = filtered.map(sub => `
+                    <div onclick="selectSub('${sub.name}', this)" class="sub-chip px-4 py-2 rounded-xl bg-white/5 text-[10px] whitespace-nowrap border border-white/10">${sub.name}</div>
+                `).join('');
+            } else container.classList.add('hidden');
+        }
+
+        function selectSub(name, el) {
+            s.sc = name;
+            el.parentElement.querySelectorAll('div').forEach(d => { d.classList.remove('bg-white', 'text-black'); d.classList.add('bg-white/5', 'text-white'); });
+            el.classList.add('bg-white', 'text-black'); el.classList.remove('bg-white/5', 'text-white');
+        }
+
+        // --- ANALYTICS ---
+        function renderAnalytics() {
+            const data = s.d.filter(i => i.mId === s.mF);
+            if (!data.length) return;
+
+            const catSums = {}; let vlad = 0, tania = 0;
+            data.forEach(i => {
+                catSums[i.c] = (catSums[i.c] || 0) + i.a;
+                if(i.u === 'Влад') vlad += i.a; else tania += i.a;
+            });
+
+            // Pie Chart
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            if(charts.pie) charts.pie.destroy();
+            charts.pie = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(catSums),
+                    datasets: [{
+                        data: Object.values(catSums),
+                        backgroundColor: ['#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 10
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#fff', font: { size: 10 } } } } }
+            });
+
+            // Bar Chart
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            if(charts.bar) charts.bar.destroy();
+            charts.bar = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Влад', 'Таня'],
+                    datasets: [{
+                        data: [vlad, tania],
+                        backgroundColor: ['#3b82f6', '#ec4899'],
+                        borderRadius: 10
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    scales: { y: { display: false }, x: { ticks: { color: '#fff' }, grid: { display: false } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // --- OPTIONS (CRUD CATEGORIES) ---
+        async function addCategory() {
+            const name = document.getElementById('newCatName').value;
+            if(!name) return;
+            await sb.from('categories').insert([{ name }]);
+            document.getElementById('newCatName').value = '';
+            loadData();
+        }
+
+        async function delCat(id) {
+            if(confirm('Видалити категорію?')) {
+                await sb.from('categories').delete().eq('id', id);
+                loadData();
+            }
+        }
+
+        async function addSubcategory() {
+            const parent = document.getElementById('parentCatSelect').value;
+            const name = document.getElementById('newSubName').value;
+            if(!name) return;
+            await sb.from('subcategory').insert([{ name, category: parent }]);
+            document.getElementById('newSubName').value = '';
+            loadData();
+        }
+
+        async function delSub(id) {
+            await sb.from('subcategory').delete().eq('id', id);
+            loadData();
+        }
+
+        function renderManageList() {
+            const catList = document.getElementById('manageCatsList');
+            catList.innerHTML = s.cats.map(c => `
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl">
+                    <span class="text-xs">${c.name}</span>
+                    <button onclick="delCat(${c.id})" class="text-red-400">✕</button>
+                </div>
+            `).join('');
+
+            const subList = document.getElementById('manageSubsList');
+            subList.innerHTML = s.subs.map(sub => `
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px]">
+                    <span>${sub.category} › ${sub.name}</span>
+                    <button onclick="delSub(${sub.id})" class="text-red-400">✕</button>
+                </div>
+            `).join('');
+        }
+
+        // --- SAVE ---
+        async function save() {
+            const amt = document.getElementById('amount');
+            if(!s.c || !amt.value) return alert('Обери категорію та суму!');
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true; document.getElementById('btnText').innerHTML = '<span class="loader"></span>';
+
+            const { error } = await sb.from('expenses').insert([{
+                date: new Date().toISOString(), who: s.u, categoria: s.c,
+                subcategory: s.sc, sum: parseFloat(amt.value), metod: s.m,
+                comm: document.getElementById('comment').value
+            }]);
+
+            if (error) { alert(error.message); btn.disabled = false; return; }
+
+            confetti({ particleCount: 60, spread: 60, origin: { y: 0.8 } });
+            document.getElementById('btnText').innerText = 'ЗБЕРЕЖЕНО ✅';
+            setTimeout(() => {
+                amt.value = ''; document.getElementById('comment').value = '';
+                document.getElementById('subContainer').classList.add('hidden');
+                document.querySelectorAll('#catPicker .cat-card').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
+                btn.disabled = false; document.getElementById('btnText').innerText = 'ЗБЕРЕГТИ ВИТРАТУ';
+                loadData();
+                switchTab('home', document.querySelector('.tab-item'));
+            }, 1000);
+        }
+
+        async function deleteExpense(id) {
+            if(confirm('Видалити цю витрату?')) {
+                await sb.from('expenses').delete().eq('id', id);
+                loadData();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadData);
+    </script>
+</body>
+</html>
