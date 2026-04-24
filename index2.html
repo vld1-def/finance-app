@@ -36,6 +36,13 @@
         .loader { width: 14px; height: 14px; border: 2px solid currentColor; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            background-size: 1em;
+        }
     </style>
 </head>
 <body>
@@ -67,8 +74,14 @@
         </div>
 
         <div class="flex gap-2 mb-6">
-            <div onclick="setUser('Влад', this)" class="btn-user">Влад</div>
-            <div onclick="setUser('Таня', this)" class="btn-user">Таня</div>
+            <div id="card-Vlad" onclick="filterHomeUser('Влад')" class="glass-card flex-1 p-5 text-center transition-all border-b-4 border-transparent">
+                <p id="curVlad" class="text-2xl font-bold text-blue-400">₴0</p>
+                <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Влад</p>
+            </div>
+            <div id="card-Tania" onclick="filterHomeUser('Таня')" class="glass-card flex-1 p-5 text-center transition-all border-b-4 border-transparent">
+                <p id="curTania" class="text-2xl font-bold text-pink-400">₴0</p>
+                <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Таня</p>
+            </div>
         </div>
 
         <div class="flex-1 space-y-4 overflow-y-auto no-scrollbar pb-6" style="touch-action: pan-y;">
@@ -108,7 +121,12 @@
             <button onclick="toggleDrawer(false)" class="text-3xl opacity-30">&times;</button>
         </div>
         <div id="monthSelector" class="flex gap-2 overflow-x-auto no-scrollbar mb-4 py-1"></div>
-        
+        <div class="glass-card p-5 mb-6">
+            <h3 class="text-[10px] font-bold opacity-40 uppercase mb-4 tracking-widest">Динаміка витрат (дні)</h3>
+            <div class="h-48">
+                <canvas id="dailyChart"></canvas>
+            </div>
+        </div>
         <div class="flex gap-2 mb-4">
             <div class="liquid-glass flex-1 p-3 text-center border-white/5">
                 <p id="resCard" class="text-sm font-bold">₴0</p>
@@ -137,7 +155,13 @@
         const { createClient } = supabase;
         const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let s = { u: '', c: '', sc: '', m: '💳 Карта', d: [], subs: [], uF: 'All', cF: null, mF: '' };
+        let s = { 
+            u: '', c: '', sc: '', m: '💳 Карта', d: [], cats: [], subs: [], 
+            mF: '', uniqueMonths: [], 
+            uF_home: 'All', // Фільтр юзера на головній
+            uF_hist: 'All', // Фільтр юзера в історії
+            cF_hist: 'All', // Фільтр категорії в історії
+        };
         const months = ["Січ", "Лют", "Бер", "Квіт", "Трав", "Черв", "Лип", "Серп", "Вер", "Жовт", "Лист", "Груд"];
 
         function setUser(n, el) { s.u = n; document.querySelectorAll('.btn-user').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
@@ -333,7 +357,48 @@ function setCat(n, el) {
             modal.classList.remove('active');
             setTimeout(() => modal.style.display = 'none', 300);
         }
-
+        function filterHomeUser(user) {
+            // Якщо клікнули на того самого — скидаємо на "Всі"
+            s.uF_home = (s.uF_home === user) ? 'All' : user;
+            
+            // Візуальна індикація активності
+            document.getElementById('card-Vlad').style.borderColor = (s.uF_home === 'Влад') ? '#6366f1' : 'transparent';
+            document.getElementById('card-Tania').style.borderColor = (s.uF_home === 'Таня') ? '#ec4899' : 'transparent';
+            
+            renderOverview(); // Перемальовуємо категорії
+        }
+        
+        // Онови функцію renderOverview, щоб вона враховувала s.uF_home при підрахунку категорій
+        function renderOverview() {
+            const monthData = s.d.filter(i => i.mId === s.mF);
+            const labelEl = document.getElementById('mLabel');
+            if (monthData.length > 0) labelEl.innerText = monthData[0].mLab;
+        
+            // Рахуємо загальні суми (завжди показуємо повні суми в картках зверху)
+            let totalVlad = 0, totalTania = 0;
+            monthData.forEach(i => { if (i.u === 'Влад') totalVlad += i.a; else totalTania += i.a; });
+            document.getElementById('curVlad').innerText = '₴' + totalVlad.toLocaleString();
+            document.getElementById('curTania').innerText = '₴' + totalTania.toLocaleString();
+        
+            // Фільтруємо дані для блоку категорій залежно від обраного юзера
+            const filteredData = (s.uF_home === 'All') ? monthData : monthData.filter(i => i.u === s.uF_home);
+            
+            let catTotals = {};
+            filteredData.forEach(i => { catTotals[i.c] = (catTotals[i.c] || 0) + i.a; });
+        
+            const block = document.getElementById('catBlock');
+            block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => `
+                <div class="glass-card p-4 flex justify-between items-center animate-fadeIn">
+                    <div>
+                        <p class="text-[10px] font-bold opacity-30 uppercase">${name}</p>
+                        <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
+                    </div>
+                    <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
+                        ${Math.round(sum / (totalVlad + totalTania) * 100)}%
+                    </div>
+                </div>
+            `).join('');
+        }
         // --- SWIPES ---
         let touchStartX = 0; let touchStartY = 0;
         document.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, { passive: true });
@@ -344,7 +409,71 @@ function setCat(n, el) {
                 if (dx > 0) toggleDrawer(true); else toggleDrawer(false);
             }
         }, { passive: true });
+// Встав це всередину renderAnalytics()
+function renderDailyChart(data) {
+    const days = {};
+    // Ініціалізуємо всі дні місяця
+    data.forEach(i => {
+        const day = i.d.split(',')[0]; // беремо лише дату "DD.MM"
+        if (!days[day]) days[day] = { Влад: 0, Таня: 0 };
+        days[day][i.u] += i.a;
+    });
 
+    const labels = Object.keys(days).reverse();
+    const vladData = labels.map(l => days[l].Влад);
+    const taniaData = labels.map(l => days[l].Таня);
+
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    if(charts.daily) charts.daily.destroy();
+    charts.daily = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Влад', data: vladData, borderColor: '#3b82f6', tension: 0.4, pointRadius: 2 },
+                { label: 'Таня', data: taniaData, borderColor: '#ec4899', tension: 0.4, pointRadius: 2 }
+            ]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { display: false }, x: { ticks: { color: 'rgba(255,255,255,0.3)', font: {size: 8} }, grid: { display: false } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+        function renderHistory() {
+    const currentMonthData = s.d.filter(i => i.mId === s.mF);
+    
+    // Оновлюємо список категорій у фільтрі (тільки при завантаженні або зміні місяця)
+    const catSelect = document.getElementById('histCatF');
+    if (catSelect.options.length <= 1) {
+        const cats = ['All', ...new Set(s.d.map(i => i.c))];
+        catSelect.innerHTML = cats.map(c => `<option value="${c}">${c === 'All' ? 'Всі категорії' : c}</option>`).join('');
+    }
+
+    const filtered = currentMonthData.filter(i => {
+        const uM = s.uF_hist === 'All' || i.u === s.uF_hist;
+        const cM = s.cF_hist === 'All' || i.c === s.cF_hist;
+        return uM && cM;
+    });
+
+    document.getElementById('hList').innerHTML = filtered.map(i => `
+        <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-bold text-xs">${i.c}${i.sc ? ' › <span class="text-indigo-300">'+i.sc+'</span>' : ''}</p>
+                    <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
+                    <button onclick="deleteExpense(${i.id})" class="p-2 opacity-20">✕</button>
+                </div>
+            </div>
+            ${i.cm ? `<p class="text-[10px] mt-2 opacity-50 italic">"${i.cm}"</p>` : ''}
+        </div>
+    `).join('');
+}
+// Не забудь викликати renderDailyChart(filteredMonthData) всередині renderAnalytics!
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
