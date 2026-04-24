@@ -567,10 +567,9 @@ function renderOverview() {
         function renderHistory() {
     const monthData = s.d.filter(i => i.mId === s.mF);
     
-    // Малюємо дні
+    // Малюємо дні (тільки ті, що існують)
     renderDaySelector();
 
-    // Оновлюємо фільтри юзерів та категорій (якщо треба)
     const uSelect = document.getElementById('histUserF');
     const cSelect = document.getElementById('histCatF');
     
@@ -585,26 +584,29 @@ function renderOverview() {
 
     // Фільтрація
     const filtered = monthData.filter(i => {
-        const uM = s.uF_hist === 'All' || i.u === s.uF_hist;
-        const cM = s.cF_hist === 'All' || i.c === s.cF_hist;
-        const dM = s.dayF_hist === 'All' || i.d.startsWith(s.dayF_hist); // Перевірка чи дата починається з "DD"
-        return uM && cM && dM;
+        const uMatch = s.uF_hist === 'All' || i.u === s.uF_hist;
+        const cMatch = s.cF_hist === 'All' || i.c === s.cF_hist;
+        const dMatch = s.dayF_hist === 'All' || i.d.startsWith(s.dayF_hist);
+        return uMatch && cMatch && dMatch;
     });
 
-    document.getElementById('hList').innerHTML = filtered.length ? filtered.map(i => `
+    const hList = document.getElementById('hList');
+    hList.innerHTML = filtered.length ? filtered.map(i => `
         <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
             <div class="flex justify-between items-center">
                 <div>
-                    <p class="font-bold text-[13px]">${i.c}${i.sc ? ' › <span class="opacity-50 text-[11px]">'+i.sc+'</span>' : ''}</p>
-                    <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
+                    <p class="font-bold text-[13px] text-white">${i.c}${i.sc ? ' › <span class="opacity-50 text-[11px] text-white">'+i.sc+'</span>' : ''}</p>
+                    <p class="text-[9px] opacity-30 uppercase text-white">${i.d} • ${i.u}</p>
                 </div>
                 <div class="flex items-center gap-3">
-                    <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
-                    <button onclick="deleteExpense(${i.id})" class="opacity-20">✕</button>
+                    <p class="font-bold text-sm text-white">₴${i.a.toLocaleString()}</p>
+                    <button onclick="deleteExpense(${i.id})" class="p-2 opacity-20 text-white">✕</button>
                 </div>
             </div>
+            <!-- ПОВЕРНУТО КОМЕНТАР -->
+            ${i.cm ? `<p class="text-[10px] mt-2 opacity-40 italic font-light leading-tight text-white">"${i.cm}"</p>` : ''}
         </div>
-    `).join('') : `<div class="text-center opacity-20 py-10 text-xs">Немає витрат за цей день</div>`;
+    `).join('') : `<div class="text-center opacity-20 py-10 text-xs text-white">Немає витрат</div>`;
 }
         // --- АНАЛІТИКА (ВИПРАВЛЕНО) ---
 function renderAnalytics() {
@@ -679,16 +681,29 @@ function renderDaySelector() {
     const container = document.getElementById('daySelector');
     if (!container) return;
     
-    // Визначаємо кількість днів у вибраному місяці (s.mF має формат "YYYY-MM")
-    const [year, month] = s.mF.split('-').map(Number);
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    let html = `<div onclick="setHistDay('All', this)" class="day-chip ${s.dayF_hist === 'All' ? 'active' : ''}">Всі</div>`;
+    // 1. Отримуємо дані тільки за вибраний місяць
+    const currentMonthData = s.d.filter(i => i.mId === s.mF);
     
-    for (let i = 1; i <= daysInMonth; i++) {
-        const dStr = i.toString().padStart(2, '0');
-        html += `<div onclick="setHistDay('${dStr}', this)" class="day-chip ${s.dayF_hist === dStr ? 'active' : ''}">${dStr}</div>`;
+    if (currentMonthData.length === 0) {
+        container.innerHTML = '';
+        return;
     }
+
+    // 2. Витягуємо унікальні дні, які є в записах
+    // i.d має формат "DD.MM, HH:MM", тому беремо перші 2 символи
+    const existingDays = [...new Set(currentMonthData.map(i => i.d.substring(0, 2)))];
+    
+    // 3. Сортуємо дні за порядком (від меншого до більшого)
+    existingDays.sort((a, b) => parseInt(a) - parseInt(b));
+
+    // 4. Формуємо HTML
+    let html = `<div onclick="setHistDay('All', this)" 
+                     class="day-chip ${s.dayF_hist === 'All' ? 'active' : ''}">Всі</div>`;
+    
+    existingDays.forEach(day => {
+        html += `<div onclick="setHistDay('${day}', this)" 
+                      class="day-chip ${s.dayF_hist === day ? 'active' : ''}">${day}</div>`;
+    });
     
     container.innerHTML = html;
 }
