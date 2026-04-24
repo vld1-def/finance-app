@@ -35,6 +35,13 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         .loader { width: 18px; height: 18px; border: 2px solid #000; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 0.6s linear infinite; }
         @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.7rem center;
+    background-size: 1em;
+}
     </style>
 </head>
 <body>
@@ -48,11 +55,11 @@
             <!-- SCREEN 1: OVERVIEW -->
             <section id="home" class="screen active">
                 <div class="flex gap-2 mb-6">
-                    <div class="glass-card flex-1 p-5 text-center">
+                    <div id="card-Vlad" onclick="filterHomeUser('Влад')" class="glass-card flex-1 p-5 text-center transition-all border-b-4 border-transparent">
                         <p id="curVlad" class="text-2xl font-bold text-blue-400">₴0</p>
                         <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Влад</p>
                     </div>
-                    <div class="glass-card flex-1 p-5 text-center">
+                    <div id="card-Tania" onclick="filterHomeUser('Таня')" class="glass-card flex-1 p-5 text-center transition-all border-b-4 border-transparent">
                         <p id="curTania" class="text-2xl font-bold text-pink-400">₴0</p>
                         <p class="text-[9px] opacity-40 uppercase tracking-widest font-bold">Таня</p>
                     </div>
@@ -106,6 +113,12 @@
 
             <!-- SCREEN 3: ANALYTICS -->
             <section id="analytics" class="screen">
+                                <div class="glass-card p-5 mb-6">
+                    <h3 class="text-[10px] font-bold opacity-40 uppercase mb-4 tracking-widest">Динаміка витрат (дні)</h3>
+                    <div class="h-48">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
                 <div class="glass-card p-6 mb-6">
                     <h3 class="text-xs font-bold uppercase opacity-40 mb-6 tracking-widest text-center">Розподіл витрат</h3>
                     <div class="h-64 relative">
@@ -149,8 +162,20 @@
 
             <!-- SCREEN 5: HISTORY (Hidden by default, triggered by Tab) -->
             <section id="history" class="screen">
-                <div id="hList" class="space-y-2 pt-4"></div>
-            </section>
+    <div class="glass-card p-4 mb-4 space-y-3">
+        <div class="flex gap-2">
+            <select id="histUserF" onchange="s.uF_hist = this.value; renderHistory();" class="flex-1 bg-white/10 p-2 rounded-xl text-[10px] text-white outline-none border border-white/10">
+                <option value="All">Всі юзери</option>
+                <option value="Влад">Влад</option>
+                <option value="Таня">Таня</option>
+            </select>
+            <select id="histCatF" onchange="s.cF_hist = this.value; renderHistory();" class="flex-1 bg-white/10 p-2 rounded-xl text-[10px] text-white outline-none border border-white/10">
+                <!-- Категорії додадуться динамічно -->
+            </select>
+        </div>
+    </div>
+    <div id="hList" class="space-y-2"></div>
+</section>
 
         </main>
 
@@ -188,7 +213,13 @@
         const { createClient } = supabase;
         const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let s = { u: 'Влад', c: '', sc: '', m: '💳 Карта', d: [], cats: [], subs: [], mF: '', mIdx: 0, uniqueMonths: [] };
+       let s = { 
+    u: 'Влад', c: '', sc: '', m: '💳 Карта', d: [], cats: [], subs: [], 
+    mF: '', uniqueMonths: [], 
+    uF_home: 'All', // Фільтр юзера на головній
+    uF_hist: 'All', // Фільтр юзера в історії
+    cF_hist: 'All', // Фільтр категорії в історії
+};
         let charts = { pie: null, bar: null };
 
         // --- CORE ---
@@ -249,62 +280,60 @@
             }
         }
 
-        function renderOverview() {
-            const currentData = s.d.filter(i => i.mId === s.mF);
-            const labelEl = document.getElementById('mLabel');
-            if (currentData.length > 0) labelEl.innerText = currentData[0].mLab;
-            else labelEl.innerText = "Дані відсутні";
+        function filterHomeUser(user) {
+    // Якщо клікнули на того самого — скидаємо на "Всі"
+    s.uF_home = (s.uF_home === user) ? 'All' : user;
+    
+    // Візуальна індикація активності
+    document.getElementById('card-Vlad').style.borderColor = (s.uF_home === 'Влад') ? '#6366f1' : 'transparent';
+    document.getElementById('card-Tania').style.borderColor = (s.uF_home === 'Таня') ? '#ec4899' : 'transparent';
+    
+    renderOverview(); // Перемальовуємо категорії
+}
 
-            let vlad = 0, tania = 0, catTotals = {};
-            currentData.forEach(i => {
-                if (i.u === 'Влад') vlad += i.a; else tania += i.a;
-                catTotals[i.c] = (catTotals[i.c] || 0) + i.a;
-            });
+// Онови функцію renderOverview, щоб вона враховувала s.uF_home при підрахунку категорій
+function renderOverview() {
+    const monthData = s.d.filter(i => i.mId === s.mF);
+    const labelEl = document.getElementById('mLabel');
+    if (monthData.length > 0) labelEl.innerText = monthData[0].mLab;
 
-            document.getElementById('curVlad').innerText = '₴' + vlad.toLocaleString();
-            document.getElementById('curTania').innerText = '₴' + tania.toLocaleString();
+    // Рахуємо загальні суми (завжди показуємо повні суми в картках зверху)
+    let totalVlad = 0, totalTania = 0;
+    monthData.forEach(i => { if (i.u === 'Влад') totalVlad += i.a; else totalTania += i.a; });
+    document.getElementById('curVlad').innerText = '₴' + totalVlad.toLocaleString();
+    document.getElementById('curTania').innerText = '₴' + totalTania.toLocaleString();
 
-            const block = document.getElementById('catBlock');
-            block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => `
-                <div class="glass-card p-4 flex justify-between items-center">
-                    <div>
-                        <p class="text-[10px] font-bold opacity-30 uppercase">${name}</p>
-                        <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
-                    </div>
-                    <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
-                        ${Math.round(sum / (vlad+tania) * 100)}%
-                    </div>
-                </div>
-            `).join('');
+    // Фільтруємо дані для блоку категорій залежно від обраного юзера
+    const filteredData = (s.uF_home === 'All') ? monthData : monthData.filter(i => i.u === s.uF_home);
+    
+    let catTotals = {};
+    filteredData.forEach(i => { catTotals[i.c] = (catTotals[i.c] || 0) + i.a; });
 
-            // Історія також фільтрується по місяцю
-            const hList = document.getElementById('hList');
-            hList.innerHTML = currentData.map(i => `
-                <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <p class="font-bold text-xs">${i.c}${i.sc ? ' › '+i.sc : ''}</p>
-                            <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
-                            <button onclick="deleteExpense(${i.id})" class="opacity-20 text-xs">✕</button>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
+    const block = document.getElementById('catBlock');
+    block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => `
+        <div class="glass-card p-4 flex justify-between items-center animate-fadeIn">
+            <div>
+                <p class="text-[10px] font-bold opacity-30 uppercase">${name}</p>
+                <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
+            </div>
+            <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
+                ${Math.round(sum / (totalVlad + totalTania) * 100)}%
+            </div>
+        </div>
+    `).join('');
+}
 
         // --- PICKERS (Dynamic Categories) ---
         function renderPickers() {
-            const picker = document.getElementById('catPicker');
-            picker.innerHTML = s.cats.map(c => `
-                <div onclick="selectCat('${c.name}', this)" class="cat-card border border-white/5">${c.name}</div>
-            `).join('');
-
-            const select = document.getElementById('parentCatSelect');
-            select.innerHTML = s.cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-        }
+    const picker = document.getElementById('catPicker');
+    picker.innerHTML = s.cats.map(c => `
+        <div onclick="selectCat('${c.name}', this)" 
+             class="cat-card border border-white/5 bg-white/5 active:scale-95 transition-all flex flex-col items-center justify-center gap-1 py-6">
+            <span class="text-lg">${c.name.split(' ')[0]}</span> <!-- Припускаємо, що перший символ - емодзі -->
+            <span class="text-[10px] font-bold uppercase opacity-60">${c.name.split(' ').slice(1).join(' ')}</span>
+        </div>
+    `).join('');
+}
 
         function selectCat(name, el) {
             s.c = name; s.sc = '';
@@ -329,6 +358,7 @@
 
         // --- ANALYTICS ---
         function renderAnalytics() {
+            renderDailyChart(filteredMonthData)
             const data = s.d.filter(i => i.mId === s.mF);
             if (!data.length) return;
 
@@ -457,7 +487,71 @@
                 loadData();
             }
         }
+// Встав це всередину renderAnalytics()
+function renderDailyChart(data) {
+    const days = {};
+    // Ініціалізуємо всі дні місяця
+    data.forEach(i => {
+        const day = i.d.split(',')[0]; // беремо лише дату "DD.MM"
+        if (!days[day]) days[day] = { Влад: 0, Таня: 0 };
+        days[day][i.u] += i.a;
+    });
 
+    const labels = Object.keys(days).reverse();
+    const vladData = labels.map(l => days[l].Влад);
+    const taniaData = labels.map(l => days[l].Таня);
+
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    if(charts.daily) charts.daily.destroy();
+    charts.daily = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Влад', data: vladData, borderColor: '#3b82f6', tension: 0.4, pointRadius: 2 },
+                { label: 'Таня', data: taniaData, borderColor: '#ec4899', tension: 0.4, pointRadius: 2 }
+            ]
+        },
+        options: { 
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { display: false }, x: { ticks: { color: 'rgba(255,255,255,0.3)', font: {size: 8} }, grid: { display: false } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+}
+        function renderHistory() {
+    const currentMonthData = s.d.filter(i => i.mId === s.mF);
+    
+    // Оновлюємо список категорій у фільтрі (тільки при завантаженні або зміні місяця)
+    const catSelect = document.getElementById('histCatF');
+    if (catSelect.options.length <= 1) {
+        const cats = ['All', ...new Set(s.d.map(i => i.c))];
+        catSelect.innerHTML = cats.map(c => `<option value="${c}">${c === 'All' ? 'Всі категорії' : c}</option>`).join('');
+    }
+
+    const filtered = currentMonthData.filter(i => {
+        const uM = s.uF_hist === 'All' || i.u === s.uF_hist;
+        const cM = s.cF_hist === 'All' || i.c === s.cF_hist;
+        return uM && cM;
+    });
+
+    document.getElementById('hList').innerHTML = filtered.map(i => `
+        <div class="glass-card p-4 border-l-4 ${i.u === 'Влад' ? 'border-blue-500' : 'border-pink-500'}">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-bold text-xs">${i.c}${i.sc ? ' › <span class="text-indigo-300">'+i.sc+'</span>' : ''}</p>
+                    <p class="text-[9px] opacity-30 uppercase">${i.d} • ${i.u}</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <p class="font-bold text-sm">₴${i.a.toLocaleString()}</p>
+                    <button onclick="deleteExpense(${i.id})" class="p-2 opacity-20">✕</button>
+                </div>
+            </div>
+            ${i.cm ? `<p class="text-[10px] mt-2 opacity-50 italic">"${i.cm}"</p>` : ''}
+        </div>
+    `).join('');
+}
+// Не забудь викликати renderDailyChart(filteredMonthData) всередині renderAnalytics!
         document.addEventListener('DOMContentLoaded', loadData);
     </script>
 </body>
