@@ -521,6 +521,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
        let s = {
     u: 'Влад', c: '', sc: '', d: [], cats: [], subs: [], edit: null,
     mF: '', uniqueMonths: [],
+    openCat: '',    // Розгорнута категорія в огляді
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
@@ -616,6 +617,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     if (idx >= 0 && idx < s.uniqueMonths.length) {
         s.mF = s.uniqueMonths[idx];
         s.dayF_hist = 'All'; // Скидаємо вибраний день при зміні місяця
+        s.openCat = '';      // І згортаємо розкриту категорію
         renderOverview();
         if (document.getElementById('history').classList.contains('active')) {
             renderHistory();
@@ -652,18 +654,64 @@ function renderOverview() {
     let catTotals = {};
     filteredData.forEach(i => { catTotals[i.c] = (catTotals[i.c] || 0) + i.a; });
 
+    const grandTotal = totalVlad + totalTania;
+
     const block = document.getElementById('catBlock');
-    block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => `
-        <div class="glass-card p-4 flex justify-between items-center animate-fadeIn">
+    block.innerHTML = Object.entries(catTotals).sort((a,b) => b[1] - a[1]).map(([name, sum]) => {
+        const open = s.openCat === name;
+        return `
+        <div class="glass-card p-4 animate-fadeIn ${open ? 'bg-white/[0.08]' : ''}" data-cat="${esc(name)}">
+            <div class="flex justify-between items-center cursor-pointer">
+                <div>
+                    <p class="text-[10px] font-bold opacity-30 uppercase">${esc(name)}</p>
+                    <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
+                        ${grandTotal ? Math.round(sum / grandTotal * 100) : 0}%
+                    </div>
+                    <span class="text-[9px] opacity-30 inline-block transition-transform" style="transform: rotate(${open ? 180 : 0}deg)">▼</span>
+                </div>
+            </div>
+            ${open ? renderSubBreakdown(filteredData, name, sum) : ''}
+        </div>`;
+    }).join('');
+
+    // Клік по картці розгортає підкатегорії (делегування — вішається один раз на контейнер)
+    block.onclick = (e) => {
+        const card = e.target.closest('[data-cat]');
+        if (!card) return;
+        s.openCat = (s.openCat === card.dataset.cat) ? '' : card.dataset.cat;
+        renderOverview();
+    };
+}
+
+// Розклад категорії по підкатегоріях (за поточний місяць і поточний фільтр юзера)
+function renderSubBreakdown(data, catName, catSum) {
+    const totals = {};
+    data.filter(i => i.c === catName).forEach(i => {
+        const key = i.sc || 'Без підкатегорії';
+        totals[key] = (totals[key] || 0) + i.a;
+    });
+
+    const rows = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+    if (!rows.length) return '';
+
+    return `<div class="mt-3 pt-3 border-t border-white/10 space-y-2.5">
+        ${rows.map(([n, v]) => {
+            const pct = catSum ? Math.round(v / catSum * 100) : 0;
+            return `
             <div>
-                <p class="text-[10px] font-bold opacity-30 uppercase">${name}</p>
-                <p class="text-lg font-black tracking-tighter">₴${sum.toLocaleString()}</p>
-            </div>
-            <div class="text-[10px] font-bold bg-white/5 px-3 py-1 rounded-full text-white/40">
-                ${Math.round(sum / (totalVlad + totalTania) * 100)}%
-            </div>
-        </div>
-    `).join('');
+                <div class="flex justify-between items-baseline mb-1">
+                    <span class="text-[11px] opacity-60">${esc(n)}</span>
+                    <span class="text-[11px] font-bold">₴${v.toLocaleString()} <span class="text-[9px] opacity-30">${pct}%</span></span>
+                </div>
+                <div class="h-[3px] rounded-full bg-white/5 overflow-hidden">
+                    <div class="h-full rounded-full" style="width: ${pct}%; background: var(--accent-grad)"></div>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
         // --- PICKERS (Dynamic Categories) ---
