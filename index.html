@@ -164,14 +164,128 @@ select option {
 }
 
 /* Відступи екранів (Screen) */
-.screen { 
-    display: none; 
-    height: 100%; 
-    overflow-y: auto; 
+.screen {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
     padding: 16px;
     /* Зменшили відступ, щоб контент був ближче до низу */
-    padding-bottom: calc(90px + env(safe-area-inset-bottom)); 
-    -webkit-overflow-scrolling: touch; 
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Обгортка контенту всередині екрана (потрібна для десктопа) */
+.screen-inner { width: 100%; }
+
+/* ===== ПОЛЯ ВВОДУ / ДАТА ===== */
+.field {
+    width: 100%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 12px 14px;
+    color: #fff;
+    outline: none;
+    font-size: 13px;
+}
+input[type="date"] { color-scheme: dark; -webkit-appearance: none; appearance: none; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.4; }
+
+/* ===== МОДАЛКА РЕДАГУВАННЯ ===== */
+.modal-back {
+    position: fixed; inset: 0; z-index: 2000;
+    display: none; align-items: center; justify-content: center;
+    padding: 20px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.modal-back.open { display: flex; }
+.modal-body {
+    width: 100%; max-width: 380px;
+    max-height: 88dvh; overflow-y: auto;
+    padding: 22px;
+    background: rgba(18,18,20,0.9);
+}
+.modal-body select {
+    height: 44px !important;
+    font-size: 13px !important;
+    padding: 10px 30px 10px 14px !important;
+    width: 100%;
+}
+.eu-btn { flex: 1; padding: 10px; text-align: center; border-radius: 12px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.05); transition: 0.2s; }
+.eu-btn.active { background: #fff; color: #000; }
+.add-label { display: none; }
+
+/* ===== ДЕСКТОПНА ВЕРСІЯ ===== */
+@media (min-width: 900px) {
+    /* Нижня панель перетворюється на бічне меню */
+    .tab-bar {
+        top: 0; bottom: 0; right: auto; left: 0;
+        width: 224px;
+        height: 100% !important;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 6px;
+        padding: 28px 16px 24px !important;
+        border-top: none;
+        border-right: 0.5px solid rgba(255,255,255,0.1);
+        background: rgba(12,12,14,0.75);
+    }
+    .tab-item {
+        flex: none;
+        flex-direction: row;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 14px;
+        font-size: 13px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        transform: none;
+        cursor: pointer;
+    }
+    .tab-item.active { background: rgba(255,255,255,0.08); }
+    .tab-item svg { width: 20px; height: 20px; }
+
+    /* Кнопка + стає повноцінною кнопкою «Додати» в меню */
+    .add-btn-wrap {
+        bottom: 28px !important;
+        left: 16px; right: auto;
+        width: 192px;
+        transform: none;
+        cursor: pointer;
+    }
+    .add-btn { width: 100%; height: 52px; border-radius: 16px; border: none; gap: 10px; }
+    .add-btn svg { width: 22px; height: 22px; }
+    .add-label { display: inline; font-size: 11px; font-weight: 800; letter-spacing: 0.18em; }
+
+    /* Контент відсувається від меню й центрується */
+    .screen { padding: 34px 40px 48px calc(224px + 40px); }
+    .screen-inner { max-width: 1120px; margin: 0 auto; }
+
+    #catBlock { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+    .an-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .an-inner > * { margin-bottom: 0 !important; }
+    .an-inner > .an-wide { grid-column: 1 / -1; }
+
+    .add-inner { max-width: 560px; }
+    .hist-inner { max-width: 1000px; }
+    #hList { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    #hList > * + * { margin-top: 0 !important; }
+
+    .opt-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .opt-inner > * { margin-bottom: 0 !important; }
+
+    .modal-body { max-width: 440px; }
+}
+
+/* Наведення мишею (тільки для десктопа) */
+@media (hover: hover) and (pointer: fine) {
+    .tab-item:hover { color: rgba(255,255,255,0.8); }
+    .cat-card:hover, .day-chip:hover, .sub-chip:hover, .user-btn:hover, .eu-btn:hover { background: rgba(255,255,255,0.12); }
+    .glass-card button:hover { opacity: 0.9; }
+    button, .cat-card, .day-chip, .sub-chip, .tab-item, .stat-chip { cursor: pointer; }
 }
     </style>
 </head>
@@ -185,6 +299,7 @@ select option {
             
             <!-- SCREEN 1: OVERVIEW -->
             <section id="home" class="screen active">
+              <div class="screen-inner home-inner">
                 <div class="flex gap-2 mb-6">
                     <div id="card-Vlad" onclick="filterHomeUser('Влад')" class="glass-card flex-1 p-5 text-center transition-all border-b-4 border-transparent">
                         <p id="curVlad" class="text-2xl font-bold text-blue-400">₴0</p>
@@ -211,10 +326,12 @@ select option {
                     <h3 class="text-[10px] font-bold opacity-40 uppercase ml-2 tracking-widest">Витрати за категоріями</h3>
                     <div id="catBlock" class="grid grid-cols-1 gap-2"></div>
                 </div>
+              </div>
             </section>
 
             <!-- SCREEN 2: ADD RECORD -->
             <section id="add" class="screen">
+              <div class="screen-inner add-inner">
                 <div class="glass-card p-6 space-y-6">
                     <div class="flex bg-white/5 p-1 rounded-2xl border border-white/10">
                         <button onclick="setUser('Влад', this)" class="user-btn active">ВЛАД</button>
@@ -223,9 +340,9 @@ select option {
 
                     <input type="number" id="amount" inputmode="decimal" placeholder="0" class="w-full bg-transparent text-center outline-none py-4 text-white text-8xl font-thin tracking-tighter">
 
-                    <div class="flex gap-2">
-                        <button onclick="setMethod('💳 Карта', this)" class="user-btn active text-[10px]">💳 КАРТА</button>
-                        <button onclick="setMethod('💵 Готівка', this)" class="user-btn text-[10px]">💵 ГОТІВКА</button>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[9px] font-bold uppercase opacity-40 tracking-widest shrink-0">Дата</span>
+                        <input type="date" id="expDate" class="field flex-1 text-center">
                     </div>
 
                     <div id="catPicker" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto no-scrollbar">
@@ -240,11 +357,13 @@ select option {
                         <span id="btnText">ЗБЕРЕГТИ ВИТРАТУ</span>
                     </button>
                 </div>
+              </div>
             </section>
 
             <!-- SCREEN 3: ANALYTICS -->
             <section id="analytics" class="screen">
-                                <div class="glass-card p-5 mb-6">
+              <div class="screen-inner an-inner">
+                                <div class="glass-card p-5 mb-6 an-wide">
                     <h3 class="text-[10px] font-bold opacity-40 uppercase mb-4 tracking-widest">Динаміка витрат (дні)</h3>
                     <div class="h-48">
                         <canvas id="dailyChart"></canvas>
@@ -267,10 +386,12 @@ select option {
                 <div class="space-y-2" id="topCatsList">
                     <!-- Рейтинг категорій -->
                 </div>
+              </div>
             </section>
 
             <!-- SCREEN 4: OPTIONS (CRUD) -->
             <section id="options" class="screen">
+              <div class="screen-inner opt-inner">
                 <div class="glass-card p-6 mb-6">
                     <h3 class="text-sm font-bold mb-4">Керування категоріями</h3>
                     <div class="flex gap-2 mb-4">
@@ -289,10 +410,12 @@ select option {
                     </div>
                     <div id="manageSubsList" class="space-y-2"></div>
                 </div>
+              </div>
             </section>
 
             <!-- SCREEN 5: HISTORY (Hidden by default, triggered by Tab) -->
             <section id="history" class="screen">
+  <div class="screen-inner hist-inner">
     <div class="glass-card p-4 mb-4 space-y-3">
         <div class="flex gap-2">
             <!-- Стилізовані селектори -->
@@ -303,6 +426,7 @@ select option {
         <div id="daySelector" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
     </div>
     <div id="hList" class="space-y-2"></div>
+  </div>
 </section>
 
         </main>
@@ -321,6 +445,7 @@ select option {
             <div class="add-btn-wrap" onclick="switchTab('add', this)">
                 <button class="add-btn">
                     <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2.5" d="M12 6v12M6 12h12"></path></svg>
+                    <span class="add-label">ДОДАТИ</span>
                 </button>
             </div>
 
@@ -335,15 +460,61 @@ select option {
         </nav>
     </div>
 
+    <!-- МОДАЛКА РЕДАГУВАННЯ ЗАПИСУ -->
+    <div id="editModal" class="modal-back" onclick="if(event.target === this) closeEdit()">
+        <div class="glass-card modal-body space-y-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-black uppercase tracking-widest">Редагувати</h3>
+                <button onclick="closeEdit()" class="text-white/40 text-2xl leading-none px-2">&times;</button>
+            </div>
+
+            <div class="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+                <button data-u="Влад" onclick="setEditUser(this)" class="eu-btn">ВЛАД</button>
+                <button data-u="Таня" onclick="setEditUser(this)" class="eu-btn">ТАНЯ</button>
+            </div>
+
+            <div class="flex gap-2">
+                <div class="flex-1">
+                    <p class="text-[9px] font-bold uppercase opacity-40 tracking-widest mb-1 ml-1">Сума</p>
+                    <input type="number" id="eAmount" inputmode="decimal" class="field">
+                </div>
+                <div class="flex-1">
+                    <p class="text-[9px] font-bold uppercase opacity-40 tracking-widest mb-1 ml-1">Дата</p>
+                    <input type="date" id="eDate" class="field">
+                </div>
+            </div>
+
+            <div>
+                <p class="text-[9px] font-bold uppercase opacity-40 tracking-widest mb-1 ml-1">Категорія</p>
+                <select id="eCat" onchange="renderEditSubs('')"></select>
+            </div>
+
+            <div id="eSubWrap">
+                <p class="text-[9px] font-bold uppercase opacity-40 tracking-widest mb-1 ml-1">Підкатегорія</p>
+                <select id="eSub"></select>
+            </div>
+
+            <div>
+                <p class="text-[9px] font-bold uppercase opacity-40 tracking-widest mb-1 ml-1">Коментар</p>
+                <input type="text" id="eComment" placeholder="—" class="field">
+            </div>
+
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeEdit()" class="flex-1 py-4 rounded-2xl font-bold bg-white/5 border border-white/10 text-white/60 uppercase text-[11px] tracking-widest active:scale-95 transition-all">Скасувати</button>
+                <button onclick="saveEdit()" id="eSaveBtn" class="flex-1 py-4 rounded-2xl font-black bg-white text-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">Зберегти</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://xezhbqcteaihrlrykbkr.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
         const { createClient } = supabase;
         const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-       let s = { 
-    u: 'Влад', c: '', sc: '', m: '💳 Карта', d: [], cats: [], subs: [], 
-    mF: '', uniqueMonths: [], 
+       let s = {
+    u: 'Влад', c: '', sc: '', d: [], cats: [], subs: [], edit: null,
+    mF: '', uniqueMonths: [],
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
@@ -377,8 +548,19 @@ select option {
     }
 }
 
-        function setUser(n, el) { s.u = n; document.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
-        function setMethod(m, el) { s.m = m; el.parentElement.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+        function setUser(n, el) { s.u = n; el.parentElement.querySelectorAll('.user-btn').forEach(b => b.classList.remove('active')); el.classList.add('active'); }
+
+        // --- ХЕЛПЕРИ ДАТИ ---
+        const pad = n => ('0' + n).slice(-2);
+        function toISODay(dateObj) { return dateObj.getFullYear() + '-' + pad(dateObj.getMonth() + 1) + '-' + pad(dateObj.getDate()); }
+        function todayISO() { return toISODay(new Date()); }
+        // Якщо обрано сьогодні — пишемо поточний час, інакше 12:00 обраного дня
+        function dateForDb(isoDay) {
+            const now = new Date();
+            if (!isoDay || isoDay === todayISO()) return now.toISOString();
+            return new Date(isoDay + 'T12:00:00').toISOString();
+        }
+        function esc(t) { return String(t ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
 
         // --- DB DATA ---
         async function loadData() {
@@ -398,14 +580,19 @@ select option {
             
             s.d = data.map(item => {
                 const dateObj = new Date(item.date);
+                const iso = toISODay(dateObj);
                 return {
-                    id: item.id, u: item.who, c: item.categoria, sc: item.subcategory, a: parseFloat(item.sum), 
-                    m: item.metod, cm: item.comm,
-                    mId: dateObj.getFullYear() + "-" + ("0" + (dateObj.getMonth() + 1)).slice(-2), 
+                    id: item.id, u: item.who, c: item.categoria, sc: item.subcategory, a: parseFloat(item.sum),
+                    cm: item.comm,
+                    ts: dateObj.getTime(),      // для сортування
+                    iso: iso,                   // YYYY-MM-DD, для фільтрів і графіка
+                    mId: iso.slice(0, 7),
                     mLab: monthsNames[dateObj.getMonth()] + " " + dateObj.getFullYear(),
                     d: dateObj.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})
                 };
             });
+            // Записи можуть мати ручну дату — сортуємо самі, від нових до старих
+            s.d.sort((a, b) => b.ts - a.ts);
 
             const monthsSet = [...new Set(s.d.map(i => i.mId))].sort().reverse();
             s.uniqueMonths = monthsSet;
@@ -573,8 +760,8 @@ function renderOverview() {
             btn.disabled = true; document.getElementById('btnText').innerHTML = '<span class="loader"></span>';
 
             const { error } = await sb.from('expenses').insert([{
-                date: new Date().toISOString(), who: s.u, categoria: s.c,
-                subcategory: s.sc, sum: parseFloat(amt.value), metod: s.m,
+                date: dateForDb(document.getElementById('expDate').value), who: s.u, categoria: s.c,
+                subcategory: s.sc, sum: parseFloat(amt.value),
                 comm: document.getElementById('comment').value
             }]);
 
@@ -584,6 +771,7 @@ function renderOverview() {
             document.getElementById('btnText').innerText = 'ЗБЕРЕЖЕНО ✅';
             setTimeout(() => {
                 amt.value = ''; document.getElementById('comment').value = '';
+                document.getElementById('expDate').value = todayISO();
                 document.getElementById('subContainer').classList.add('hidden');
                 document.querySelectorAll('#catPicker .cat-card').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
                 btn.disabled = false; document.getElementById('btnText').innerText = 'ЗБЕРЕГТИ ВИТРАТУ';
@@ -595,7 +783,8 @@ function renderOverview() {
         async function deleteExpense(id) {
             if(confirm('Видалити цю витрату?')) {
                 await sb.from('expenses').delete().eq('id', id);
-                loadData();
+                await loadData();
+                renderHistory(); // інакше видалений запис лишався б у списку до перезаходу
             }
         }
 
@@ -621,7 +810,7 @@ function renderOverview() {
     const filtered = monthData.filter(i => {
         const uMatch = s.uF_hist === 'All' || i.u === s.uF_hist;
         const cMatch = s.cF_hist === 'All' || i.c === s.cF_hist;
-        const dMatch = s.dayF_hist === 'All' || i.d.startsWith(s.dayF_hist);
+        const dMatch = s.dayF_hist === 'All' || i.iso.slice(8, 10) === s.dayF_hist;
         return uMatch && cMatch && dMatch;
     });
 
@@ -633,13 +822,14 @@ function renderOverview() {
                     <p class="font-bold text-[13px] text-white">${i.c}${i.sc ? ' › <span class="opacity-50 text-[11px] text-white">'+i.sc+'</span>' : ''}</p>
                     <p class="text-[9px] opacity-30 uppercase text-white">${i.d} • ${i.u}</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <p class="font-bold text-sm text-white">₴${i.a.toLocaleString()}</p>
+                <div class="flex items-center gap-1">
+                    <p class="font-bold text-sm text-white mr-2">₴${i.a.toLocaleString()}</p>
+                    <button onclick="openEdit(${i.id})" class="p-2 opacity-30 text-white text-[13px]">✎</button>
                     <button onclick="deleteExpense(${i.id})" class="p-2 opacity-20 text-white">✕</button>
                 </div>
             </div>
             <!-- ПОВЕРНУТО КОМЕНТАР -->
-            ${i.cm ? `<p class="text-[10px] mt-2 opacity-40 italic font-light leading-tight text-white">"${i.cm}"</p>` : ''}
+            ${i.cm ? `<p class="text-[10px] mt-2 opacity-40 italic font-light leading-tight text-white">"${esc(i.cm)}"</p>` : ''}
         </div>
     `).join('') : `<div class="text-center opacity-20 py-10 text-xs text-white">Немає витрат</div>`;
 }
@@ -724,9 +914,8 @@ function renderDaySelector() {
         return;
     }
 
-    // 2. Витягуємо унікальні дні, які є в записах
-    // i.d має формат "DD.MM, HH:MM", тому беремо перші 2 символи
-    const existingDays = [...new Set(currentMonthData.map(i => i.d.substring(0, 2)))];
+    // 2. Витягуємо унікальні дні, які є в записах (з ISO-дати, а не з тексту)
+    const existingDays = [...new Set(currentMonthData.map(i => i.iso.slice(8, 10)))];
     
     // 3. Сортуємо дні за порядком (від меншого до більшого)
     existingDays.sort((a, b) => parseInt(a) - parseInt(b));
@@ -750,19 +939,21 @@ function setHistDay(day, el) {
 // --- ГРАФІК ПО ДНЯХ (ВИПРАВЛЕНО) ---
 function renderDailyChart(data) {
     const days = {};
-    
-    // Сортуємо дані за часом, щоб графік йшов зліва направо
-    const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Сортуємо дані за часом (старі → нові), щоб графік йшов зліва направо
+    const sortedData = [...data].sort((a, b) => a.ts - b.ts);
 
     sortedData.forEach(i => {
-        const day = i.d.split(',')[0]; // Беремо "DD.MM"
-        if (!days[day]) days[day] = { Влад: 0, Таня: 0 };
+        const day = i.iso; // YYYY-MM-DD — надійний ключ і правильний порядок
+        if (!days[day]) days[day] = { 'Влад': 0, 'Таня': 0 };
+        if (days[day][i.u] === undefined) days[day][i.u] = 0;
         days[day][i.u] += i.a;
     });
 
-    const labels = Object.keys(days);
-    const vladData = labels.map(l => days[l].Влад);
-    const taniaData = labels.map(l => days[l].Таня);
+    const keys = Object.keys(days);
+    const labels = keys.map(k => k.slice(8, 10) + '.' + k.slice(5, 7)); // "DD.MM"
+    const vladData = keys.map(k => days[k]['Влад']);
+    const taniaData = keys.map(k => days[k]['Таня']);
 
     const ctx = document.getElementById('dailyChart').getContext('2d');
     if(!charts) charts = {}; // Захист якщо об'єкт charts не ініціалізовано
@@ -788,8 +979,86 @@ function renderDailyChart(data) {
         }
     });
 }
-// Не забудь викликати renderDailyChart(filteredMonthData) всередині renderAnalytics!
-        document.addEventListener('DOMContentLoaded', loadData);
+
+// --- РЕДАГУВАННЯ ЗАПИСУ ---
+function openEdit(id) {
+    const it = s.d.find(x => x.id === id);
+    if (!it) return;
+    s.edit = { id: it.id, u: it.u, iso: it.iso, ts: it.ts };
+
+    document.getElementById('eAmount').value = it.a;
+    document.getElementById('eDate').value = it.iso;
+    document.getElementById('eComment').value = it.cm || '';
+    document.querySelectorAll('#editModal .eu-btn').forEach(b => b.classList.toggle('active', b.dataset.u === it.u));
+
+    // Категорії (якщо стару категорію видалили — додаємо її окремим пунктом, щоб не загубити)
+    const cSel = document.getElementById('eCat');
+    let opts = s.cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`);
+    if (it.c && !s.cats.some(c => c.name === it.c)) opts.unshift(`<option value="${esc(it.c)}">${esc(it.c)} (видалена)</option>`);
+    cSel.innerHTML = opts.join('');
+    cSel.value = it.c;
+
+    renderEditSubs(it.sc || '');
+    document.getElementById('editModal').classList.add('open');
+}
+
+function renderEditSubs(selected) {
+    const cat = document.getElementById('eCat').value;
+    const list = s.subs.filter(x => x.category === cat);
+    const sel = document.getElementById('eSub');
+    sel.innerHTML = `<option value="">— без підкатегорії —</option>` + list.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    sel.value = selected || '';
+    document.getElementById('eSubWrap').style.display = list.length ? 'block' : 'none';
+}
+
+function setEditUser(el) {
+    if (!s.edit) return;
+    s.edit.u = el.dataset.u;
+    document.querySelectorAll('#editModal .eu-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+}
+
+function closeEdit() {
+    document.getElementById('editModal').classList.remove('open');
+    s.edit = null;
+}
+
+async function saveEdit() {
+    if (!s.edit) return;
+    const amount = parseFloat(document.getElementById('eAmount').value);
+    if (!amount) return alert('Вкажи суму!');
+
+    const newIso = document.getElementById('eDate').value || s.edit.iso;
+    // Якщо день не міняли — зберігаємо оригінальний час запису
+    const dateIso = (newIso === s.edit.iso) ? new Date(s.edit.ts).toISOString() : new Date(newIso + 'T12:00:00').toISOString();
+
+    const btn = document.getElementById('eSaveBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+
+    const { error } = await sb.from('expenses').update({
+        date: dateIso,
+        who: s.edit.u,
+        categoria: document.getElementById('eCat').value,
+        subcategory: document.getElementById('eSub').value || null,
+        sum: amount,
+        comm: document.getElementById('eComment').value || null
+    }).eq('id', s.edit.id);
+
+    btn.disabled = false; btn.innerText = 'Зберегти';
+    if (error) return alert(error.message);
+
+    closeEdit();
+    await loadData();
+    renderHistory();
+    if (window.navigator.vibrate) window.navigator.vibrate(15);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeEdit(); });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('expDate').value = todayISO();
+            loadData();
+        });
     </script>
 </body>
 </html>
