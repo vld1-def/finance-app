@@ -276,6 +276,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 
     .opt-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
     .opt-inner > * { margin-bottom: 0 !important; }
+    .full-row { grid-column: 1 / -1; }
 
     .modal-body { max-width: 440px; }
 }
@@ -392,6 +393,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <!-- SCREEN 4: OPTIONS (CRUD) -->
             <section id="options" class="screen">
               <div class="screen-inner opt-inner">
+                <div id="hiddenHint" style="display:none" class="glass-card p-4 mb-6 border-l-4 border-amber-500 full-row">
+                    <p class="text-[11px] font-bold mb-2">Щоб приховування працювало, додай колонку в Supabase → SQL Editor:</p>
+                    <code class="block text-[9px] opacity-60 leading-relaxed break-all">alter table categories add column hidden boolean not null default false;<br>alter table subcategory add column hidden boolean not null default false;</code>
+                </div>
+
                 <div class="glass-card p-6 mb-6">
                     <h3 class="text-sm font-bold mb-4">Керування категоріями</h3>
                     <div class="flex gap-2 mb-4">
@@ -663,8 +669,8 @@ function renderOverview() {
         // --- PICKERS (Dynamic Categories) ---
    function renderPickers() {
     const picker = document.getElementById('catPicker');
-    // Зменшено py-6 до py-3 та gap-1 до gap-0.5
-    picker.innerHTML = s.cats.map(c => `
+    // У формі додавання показуємо лише НЕ приховані категорії
+    picker.innerHTML = s.cats.filter(c => !c.hidden).map(c => `
         <div onclick="selectCat('${c.name}', this)" 
              class="cat-card border border-white/5 bg-white/5 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 py-3 rounded-2xl">
             <span class="text-base">${c.name.split(' ')[0]}</span> <!-- Емодзі -->
@@ -674,10 +680,12 @@ function renderOverview() {
         </div>
     `).join('');
 
-    // Оновлення списку в налаштуваннях
+    // Оновлення списку в налаштуваннях (тут показуємо всі, з поміткою)
     const select = document.getElementById('parentCatSelect');
     if (select) {
-        select.innerHTML = s.cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+        const prev = select.value;
+        select.innerHTML = s.cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}${c.hidden ? ' (приховано)' : ''}</option>`).join('');
+        if (prev) select.value = prev;
     }
 }
 
@@ -686,7 +694,7 @@ function renderOverview() {
             document.querySelectorAll('#catPicker .cat-card').forEach(b => b.classList.remove('active', 'bg-indigo-600'));
             el.classList.add('active', 'bg-indigo-600');
             
-            const filtered = s.subs.filter(sub => sub.category === name);
+            const filtered = s.subs.filter(sub => sub.category === name && !sub.hidden);
             const container = document.getElementById('subContainer');
             if (filtered.length > 0) {
                 container.classList.remove('hidden');
@@ -734,22 +742,47 @@ function renderOverview() {
             loadData();
         }
 
+        // Приховані — в кінець списку (сортування стабільне, тому решта порядку не з'їде)
+        function byHidden(a, b) { return (a.hidden ? 1 : 0) - (b.hidden ? 1 : 0); }
+
         function renderManageList() {
+            // Якщо колонки hidden ще немає в базі — показуємо підказку з SQL
+            const hint = document.getElementById('hiddenHint');
+            if (hint) hint.style.display = (s.cats.length && !('hidden' in s.cats[0])) ? 'block' : 'none';
+
             const catList = document.getElementById('manageCatsList');
-            catList.innerHTML = s.cats.map(c => `
-                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl">
-                    <span class="text-xs">${c.name}</span>
-                    <button onclick="delCat(${c.id})" class="text-red-400">✕</button>
+            catList.innerHTML = [...s.cats].sort(byHidden).map(c => `
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl ${c.hidden ? 'opacity-40' : ''}">
+                    <span class="text-xs">${esc(c.name)}${c.hidden ? ' <span class="text-[9px] opacity-70">(приховано)</span>' : ''}</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="toggleHidden('categories', ${c.id}, ${!c.hidden})" class="px-2 text-sm" title="${c.hidden ? 'Показати' : 'Приховати'}">${c.hidden ? '🙈' : '👁'}</button>
+                        <button onclick="delCat(${c.id})" class="text-red-400 px-2">✕</button>
+                    </div>
                 </div>
             `).join('');
 
             const subList = document.getElementById('manageSubsList');
-            subList.innerHTML = s.subs.map(sub => `
-                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px]">
-                    <span>${sub.category} › ${sub.name}</span>
-                    <button onclick="delSub(${sub.id})" class="text-red-400">✕</button>
+            subList.innerHTML = [...s.subs].sort(byHidden).map(sub => `
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl text-[10px] ${sub.hidden ? 'opacity-40' : ''}">
+                    <span>${esc(sub.category)} › ${esc(sub.name)}${sub.hidden ? ' <span class="opacity-70">(приховано)</span>' : ''}</span>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <button onclick="toggleHidden('subcategory', ${sub.id}, ${!sub.hidden})" class="px-2 text-sm" title="${sub.hidden ? 'Показати' : 'Приховати'}">${sub.hidden ? '🙈' : '👁'}</button>
+                        <button onclick="delSub(${sub.id})" class="text-red-400 px-2">✕</button>
+                    </div>
                 </div>
             `).join('');
+        }
+
+        // Приховати / показати категорію або підкатегорію (записи в історії не чіпаються)
+        async function toggleHidden(table, id, val) {
+            const { error } = await sb.from(table).update({ hidden: val }).eq('id', id);
+            if (error) {
+                if (/hidden/i.test(error.message)) {
+                    alert('У базі ще немає колонки hidden.\n\nSupabase → SQL Editor:\n\nalter table categories add column hidden boolean not null default false;\nalter table subcategory add column hidden boolean not null default false;');
+                } else alert(error.message);
+                return;
+            }
+            loadData();
         }
 
         // --- SAVE ---
@@ -991,10 +1024,13 @@ function openEdit(id) {
     document.getElementById('eComment').value = it.cm || '';
     document.querySelectorAll('#editModal .eu-btn').forEach(b => b.classList.toggle('active', b.dataset.u === it.u));
 
-    // Категорії (якщо стару категорію видалили — додаємо її окремим пунктом, щоб не загубити)
+    // Категорії: тільки видимі + власна категорія запису (навіть якщо її приховали чи видалили)
     const cSel = document.getElementById('eCat');
-    let opts = s.cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`);
-    if (it.c && !s.cats.some(c => c.name === it.c)) opts.unshift(`<option value="${esc(it.c)}">${esc(it.c)} (видалена)</option>`);
+    let opts = s.cats.filter(c => !c.hidden).map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`);
+    if (it.c && !s.cats.some(c => c.name === it.c && !c.hidden)) {
+        const mark = s.cats.some(c => c.name === it.c) ? 'прихована' : 'видалена';
+        opts.unshift(`<option value="${esc(it.c)}">${esc(it.c)} (${mark})</option>`);
+    }
     cSel.innerHTML = opts.join('');
     cSel.value = it.c;
 
@@ -1004,7 +1040,8 @@ function openEdit(id) {
 
 function renderEditSubs(selected) {
     const cat = document.getElementById('eCat').value;
-    const list = s.subs.filter(x => x.category === cat);
+    // Видимі підкатегорії + та, що вже стоїть у записі
+    const list = s.subs.filter(x => x.category === cat && (!x.hidden || x.name === selected));
     const sel = document.getElementById('eSub');
     sel.innerHTML = `<option value="">— без підкатегорії —</option>` + list.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
     sel.value = selected || '';
