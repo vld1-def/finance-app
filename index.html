@@ -216,6 +216,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .eu-btn.active { background: #fff; color: #000; }
 .add-label { display: none; }
 
+/* ===== ТАБЛИЦЯ МАСОВОГО ДОДАВАННЯ ===== */
+.bulk-table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0 6px; }
+.bulk-table th {
+    font-size: 8px; text-transform: uppercase; letter-spacing: 0.12em;
+    opacity: 0.35; font-weight: 800; text-align: left; padding: 0 4px 2px;
+}
+.bulk-table td { padding: 0 3px; vertical-align: middle; }
+.bulk-table .field { padding: 7px 10px; font-size: 12px; border-radius: 10px; height: 34px; }
+.bulk-table select { height: 34px !important; font-size: 11px !important; padding: 6px 22px 6px 10px !important; }
+.bulk-table select:disabled { opacity: 0.3; }
+.bulk-row-del { color: #f87171; opacity: 0.5; padding: 6px 4px; font-size: 12px; }
+.bulk-row-del:active { opacity: 1; }
+
 /* ===== ДЕСКТОПНА ВЕРСІЯ ===== */
 @media (min-width: 900px) {
     /* Нижня панель перетворюється на бічне меню */
@@ -270,6 +283,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     .an-inner > .an-wide { grid-column: 1 / -1; }
 
     .add-inner { max-width: 560px; }
+    .add-inner.bulk-mode { max-width: 1120px; } /* у режимі таблиці даємо всю ширину */
     .hist-inner { max-width: 1000px; }
     #hList { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     #hList > * + * { margin-top: 0 !important; }
@@ -332,7 +346,15 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 
             <!-- SCREEN 2: ADD RECORD -->
             <section id="add" class="screen">
-              <div class="screen-inner add-inner">
+              <div class="screen-inner add-inner" id="addInner">
+
+                <!-- Перемикач режиму: одна витрата / таблиця -->
+                <div class="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-4">
+                    <button onclick="setAddMode('single')" id="modeSingle" class="user-btn active text-[10px]">➕ ОДНА</button>
+                    <button onclick="setAddMode('bulk')" id="modeBulk" class="user-btn text-[10px]">📋 ТАБЛИЦЯ</button>
+                </div>
+
+                <div id="addSingle">
                 <div class="glass-card p-6 space-y-6">
                     <div class="flex bg-white/5 p-1 rounded-2xl border border-white/10">
                         <button onclick="setUser('Влад', this)" class="user-btn active">ВЛАД</button>
@@ -358,6 +380,40 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
                         <span id="btnText">ЗБЕРЕГТИ ВИТРАТУ</span>
                     </button>
                 </div>
+                </div>
+
+                <!-- РЕЖИМ ТАБЛИЦІ: масове додавання -->
+                <div id="addBulk" class="hidden">
+                    <div class="glass-card p-4 space-y-3">
+                        <div class="overflow-x-auto no-scrollbar -mx-1 px-1">
+                            <table class="bulk-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:80px">Хто</th>
+                                        <th style="width:130px">Дата</th>
+                                        <th style="width:150px">Категорія</th>
+                                        <th style="width:130px">Підкатегорія</th>
+                                        <th style="width:90px">Сума</th>
+                                        <th>Коментар</th>
+                                        <th style="width:28px"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="bulkBody"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3 pt-1">
+                            <button onclick="bulkAddRow()" class="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all">+ Рядок</button>
+                            <p id="bulkTotal" class="text-[10px] opacity-40 text-right"></p>
+                        </div>
+
+                        <button onclick="bulkSave()" id="bulkSaveBtn" class="w-full py-4 rounded-2xl font-black bg-white text-black uppercase text-[11px] tracking-[0.2em] active:scale-95 transition-all">
+                            Зберегти всі
+                        </button>
+                        <p class="text-[9px] opacity-25 text-center leading-relaxed">Порожні рядки й рядки без категорії або суми просто пропускаються. Новий рядок успадковує «хто», дату й категорію з попереднього.</p>
+                    </div>
+                </div>
+
               </div>
             </section>
 
@@ -522,6 +578,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     u: 'Влад', c: '', sc: '', d: [], cats: [], subs: [], edit: null,
     mF: '', uniqueMonths: [],
     openCat: '',    // Розгорнута категорія в огляді
+    addMode: 'single', bulk: [], // Режим додавання і рядки таблиці
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
@@ -539,6 +596,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     if(el.classList.contains('tab-item')) el.classList.add('active');
 
     if(id === 'analytics') renderAnalytics();
+    if(id === 'add' && s.addMode === 'bulk') renderBulk(); // категорії могли змінитись
     
     // ФІКС ІСТОРІЇ: скидаємо фільтри при вході
     if(id === 'history') {
@@ -859,6 +917,117 @@ function renderSubBreakdown(data, catName, catSum) {
                 loadData();
                 switchTab('home', document.querySelector('.tab-item'));
             }, 1000);
+        }
+
+        // --- МАСОВЕ ДОДАВАННЯ (ТАБЛИЦЯ) ---
+        function setAddMode(mode) {
+            s.addMode = mode;
+            document.getElementById('addSingle').classList.toggle('hidden', mode !== 'single');
+            document.getElementById('addBulk').classList.toggle('hidden', mode !== 'bulk');
+            document.getElementById('modeSingle').classList.toggle('active', mode === 'single');
+            document.getElementById('modeBulk').classList.toggle('active', mode === 'bulk');
+            document.getElementById('addInner').classList.toggle('bulk-mode', mode === 'bulk');
+            if (mode === 'bulk') {
+                if (!s.bulk.length) s.bulk = [bulkNewRow(), bulkNewRow(), bulkNewRow()];
+                renderBulk();
+            }
+        }
+
+        // Новий рядок успадковує хто/дату/категорію з останнього заповненого — щоб не клікати одне й те саме
+        function bulkNewRow() {
+            const prev = [...s.bulk].reverse().find(r => r.c) || s.bulk[s.bulk.length - 1];
+            return { u: prev ? prev.u : 'Влад', iso: prev ? prev.iso : todayISO(), c: prev ? prev.c : '', sc: '', a: '', cm: '' };
+        }
+
+        function bulkAddRow() {
+            s.bulk.push(bulkNewRow());
+            renderBulk();
+            const rows = document.querySelectorAll('#bulkBody tr');
+            const last = rows[rows.length - 1];
+            if (last) last.querySelector('[data-f="a"]').focus();
+        }
+
+        function bulkDelRow(i) {
+            s.bulk.splice(i, 1);
+            if (!s.bulk.length) s.bulk = [bulkNewRow()];
+            renderBulk();
+        }
+
+        function renderBulk() {
+            const body = document.getElementById('bulkBody');
+            if (!body) return;
+            const cats = s.cats.filter(c => !c.hidden);
+
+            body.innerHTML = s.bulk.map((r, i) => {
+                const subs = s.subs.filter(x => x.category === r.c && !x.hidden);
+                return `<tr data-idx="${i}">
+                    <td><select data-f="u">${['Влад', 'Таня'].map(u => `<option ${r.u === u ? 'selected' : ''}>${u}</option>`).join('')}</select></td>
+                    <td><input type="date" class="field" data-f="iso" value="${r.iso}"></td>
+                    <td><select data-f="c"><option value="">— вибери —</option>${cats.map(c => `<option value="${esc(c.name)}" ${r.c === c.name ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></td>
+                    <td><select data-f="sc" ${subs.length ? '' : 'disabled'}><option value="">—</option>${subs.map(x => `<option value="${esc(x.name)}" ${r.sc === x.name ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></td>
+                    <td><input type="number" inputmode="decimal" class="field text-right" data-f="a" value="${r.a}" placeholder="0"></td>
+                    <td><input type="text" class="field" data-f="cm" value="${esc(r.cm)}" placeholder="—"></td>
+                    <td class="text-center"><button onclick="bulkDelRow(${i})" class="bulk-row-del" title="Видалити рядок">✕</button></td>
+                </tr>`;
+            }).join('');
+
+            // Делегування: значення осідають у s.bulk, без перемальовування на кожну літеру
+            body.oninput = e => {
+                const f = e.target.dataset.f;
+                if (!f) return;
+                s.bulk[+e.target.closest('tr').dataset.idx][f] = e.target.value;
+                if (f === 'a' || f === 'c') updateBulkTotals();
+            };
+            body.onchange = e => {
+                const f = e.target.dataset.f;
+                if (!f) return;
+                const i = +e.target.closest('tr').dataset.idx;
+                s.bulk[i][f] = e.target.value;
+                if (f === 'c') { s.bulk[i].sc = ''; renderBulk(); } // підкатегорії залежать від категорії
+            };
+
+            updateBulkTotals();
+        }
+
+        function bulkReady() {
+            return s.bulk.filter(r => r.c && parseFloat(r.a) > 0);
+        }
+
+        function updateBulkTotals() {
+            const ready = bulkReady();
+            const sum = ready.reduce((t, r) => t + parseFloat(r.a), 0);
+            document.getElementById('bulkTotal').innerText = ready.length
+                ? `${ready.length} з ${s.bulk.length} • ₴${sum.toLocaleString()}`
+                : `${s.bulk.length} рядків, жоден не заповнений`;
+            document.getElementById('bulkSaveBtn').innerText = ready.length ? `Зберегти ${ready.length}` : 'Зберегти всі';
+        }
+
+        async function bulkSave() {
+            const ready = bulkReady();
+            if (!ready.length) return alert('Заповни хоча б один рядок: категорія + сума');
+
+            const btn = document.getElementById('bulkSaveBtn');
+            btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+
+            const { error } = await sb.from('expenses').insert(ready.map(r => ({
+                date: dateForDb(r.iso), who: r.u, categoria: r.c,
+                subcategory: r.sc || null, sum: parseFloat(r.a), comm: r.cm || null
+            })));
+
+            btn.disabled = false;
+            if (error) { alert(error.message); updateBulkTotals(); return; }
+
+            const skipped = s.bulk.length - ready.length;
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.8 } });
+            btn.innerText = `ЗБЕРЕЖЕНО ${ready.length} ✅`;
+
+            setTimeout(() => {
+                s.bulk = [bulkNewRow(), bulkNewRow(), bulkNewRow()];
+                s.bulk.forEach(r => { r.a = ''; r.cm = ''; });
+                renderBulk();
+                loadData();
+                if (skipped > 0) document.getElementById('bulkTotal').innerText = `Пропущено порожніх: ${skipped}`;
+            }, 1200);
         }
 
         async function deleteExpense(id) {
