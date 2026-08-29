@@ -254,6 +254,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .tx-acts button { padding: 6px 3px; font-size: 11px; opacity: 0.25; }
 .tx-acts button:active { opacity: 0.8; }
 .tx-summary { font-size: 10px; opacity: 0.4; margin: 0 0 8px 4px; }
+.hist-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hist-filters .hf-wide { grid-column: 1 / -1; } /* на телефоні підкатегорія на свій рядок */
 
 /* ===== ТАБЛИЦЯ МАСОВОГО ДОДАВАННЯ ===== */
 .bulk-table { width: 100%; min-width: 680px; border-collapse: separate; border-spacing: 0 6px; }
@@ -324,6 +326,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     .add-inner { max-width: 560px; }
     .add-inner.bulk-mode { max-width: 1120px; } /* у режимі таблиці даємо всю ширину */
     .hist-inner { max-width: 820px; } /* суцільний список — вужче читається краще */
+    .hist-filters { grid-template-columns: 1fr 1fr 1fr; }
+    .hist-filters .hf-wide { grid-column: auto; }
 
     .opt-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
     .opt-inner > * { margin-bottom: 0 !important; }
@@ -516,10 +520,11 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <section id="history" class="screen">
   <div class="screen-inner hist-inner">
     <div class="glass-card p-4 mb-4 space-y-3">
-        <div class="flex gap-2">
+        <div class="hist-filters">
             <!-- Стилізовані селектори -->
-            <select id="histUserF" onchange="s.uF_hist = this.value; renderHistory();" class="flex-1"></select>
-            <select id="histCatF" onchange="s.cF_hist = this.value; renderHistory();" class="flex-1"></select>
+            <select id="histUserF" onchange="s.uF_hist = this.value; renderHistory();"></select>
+            <select id="histCatF" onchange="setHistCat(this.value)"></select>
+            <select id="histSubF" onchange="s.scF_hist = this.value; renderHistory();" class="hf-wide"></select>
         </div>
         <!-- Селектор днів -->
         <div id="daySelector" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
@@ -619,6 +624,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
+    scF_hist: 'All', // Фільтр підкатегорії в історії
     dayF_hist: 'All'
 };
         let charts = { pie: null, bar: null, daily: null };
@@ -637,9 +643,10 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     
     // ФІКС ІСТОРІЇ: скидаємо фільтри при вході
     if(id === 'history') {
-        s.uF_hist = 'All'; 
+        s.uF_hist = 'All';
         s.cF_hist = 'All';
-        
+        s.scF_hist = 'All';
+
         // Візуально оновлюємо селектори фільтрів (якщо вони вже створені)
         const uSel = document.getElementById('histUserF');
         const cSel = document.getElementById('histCatF');
@@ -1075,6 +1082,13 @@ function renderSubBreakdown(data, catName, catSum) {
             }
         }
 
+        // Зміна категорії скидає підкатегорію — інакше лишився б фільтр з іншої категорії
+        function setHistCat(v) {
+            s.cF_hist = v;
+            s.scF_hist = 'All';
+            renderHistory();
+        }
+
         function renderHistory() {
     const monthData = s.d.filter(i => i.mId === s.mF);
     
@@ -1090,15 +1104,31 @@ function renderSubBreakdown(data, catName, catSum) {
     
     if (cSelect) {
         const cats = ['All', ...new Set(monthData.map(i => i.c))];
-        cSelect.innerHTML = cats.map(c => `<option value="${c}" ${s.cF_hist === c ? 'selected' : ''}>${c === 'All' ? 'Всі категорії' : c}</option>`).join('');
+        cSelect.innerHTML = cats.map(c => `<option value="${esc(c)}" ${s.cF_hist === c ? 'selected' : ''}>${c === 'All' ? 'Всі категорії' : esc(c)}</option>`).join('');
+    }
+
+    // Підкатегорії: список залежить від обраної категорії, тому оновлюємо щоразу
+    const scSelect = document.getElementById('histSubF');
+    if (scSelect) {
+        const pool = s.cF_hist === 'All' ? monthData : monthData.filter(i => i.c === s.cF_hist);
+        const subs = [...new Set(pool.filter(i => i.sc).map(i => i.sc))].sort();
+        const hasNone = pool.some(i => !i.sc);
+        if (s.scF_hist !== 'All' && s.scF_hist !== '__none__' && !subs.includes(s.scF_hist)) s.scF_hist = 'All';
+        if (s.scF_hist === '__none__' && !hasNone) s.scF_hist = 'All';
+
+        scSelect.innerHTML = `<option value="All">Всі підкатегорії</option>`
+            + (hasNone ? `<option value="__none__" ${s.scF_hist === '__none__' ? 'selected' : ''}>Без підкатегорії</option>` : '')
+            + subs.map(x => `<option value="${esc(x)}" ${s.scF_hist === x ? 'selected' : ''}>${esc(x)}</option>`).join('');
+        scSelect.disabled = !subs.length && !hasNone;
     }
 
     // Фільтрація
     const filtered = monthData.filter(i => {
         const uMatch = s.uF_hist === 'All' || i.u === s.uF_hist;
         const cMatch = s.cF_hist === 'All' || i.c === s.cF_hist;
+        const scMatch = s.scF_hist === 'All' || (s.scF_hist === '__none__' ? !i.sc : i.sc === s.scF_hist);
         const dMatch = s.dayF_hist === 'All' || i.iso.slice(8, 10) === s.dayF_hist;
-        return uMatch && cMatch && dMatch;
+        return uMatch && cMatch && scMatch && dMatch;
     });
 
     renderHistList(filtered);
