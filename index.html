@@ -254,6 +254,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .tx-acts button { padding: 6px 3px; font-size: 11px; opacity: 0.25; }
 .tx-acts button:active { opacity: 0.8; }
 .tx-summary { font-size: 10px; opacity: 0.4; margin: 0 0 8px 4px; }
+/* Перемикачі юзерів в аналітиці */
+.an-chip {
+    padding: 7px 14px; border-radius: 12px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.3);
+    transition: 0.2s;
+}
+.an-chip.active { color: #fff; border-color: var(--c); background: color-mix(in srgb, var(--c) 22%, transparent); }
+.an-chip::before { content: '●'; margin-right: 6px; color: var(--c); opacity: 0.35; }
+.an-chip.active::before { opacity: 1; }
+
 .hist-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .hist-filters .hf-wide { grid-column: 1 / -1; } /* на телефоні підкатегорія на свій рядок */
 
@@ -461,16 +474,33 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <!-- SCREEN 3: ANALYTICS -->
             <section id="analytics" class="screen">
               <div class="screen-inner an-inner">
-                                <div class="glass-card p-5 mb-6 an-wide">
+
+                <!-- Період + перемикачі юзерів (діють на всі графіки) -->
+                <div class="glass-card p-4 mb-6 an-wide flex items-center justify-between gap-3">
+                    <div>
+                        <p id="anMonth" class="text-sm font-bold tracking-tight">—</p>
+                        <p class="text-[8px] opacity-30 uppercase font-black">Період аналізу</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="anBtn-Влад" onclick="toggleAnUser('Влад')" class="an-chip active" style="--c:#3b82f6">Влад</button>
+                        <button id="anBtn-Таня" onclick="toggleAnUser('Таня')" class="an-chip active" style="--c:#ec4899">Таня</button>
+                    </div>
+                </div>
+
+                <div class="glass-card p-5 mb-6 an-wide">
                     <h3 class="text-[10px] font-bold opacity-40 uppercase mb-4 tracking-widest">Динаміка витрат (дні)</h3>
                     <div class="h-48">
                         <canvas id="dailyChart"></canvas>
                     </div>
                 </div>
-                <div class="glass-card p-6 mb-6">
-                    <h3 class="text-xs font-bold uppercase opacity-40 mb-6 tracking-widest text-center">Розподіл витрат</h3>
-                    <div class="h-64 relative">
-                        <canvas id="pieChart"></canvas>
+
+                <div class="glass-card p-5 mb-6 an-wide">
+                    <div class="flex items-baseline justify-between mb-4 gap-3">
+                        <h3 class="text-[10px] font-bold opacity-40 uppercase tracking-widest">Динаміка по місяцях</h3>
+                        <p class="text-[8px] opacity-25 uppercase tracking-widest">клік по стовпчику — перейти в місяць</p>
+                    </div>
+                    <div class="h-56">
+                        <canvas id="monthChart"></canvas>
                     </div>
                 </div>
 
@@ -481,8 +511,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
                     </div>
                 </div>
 
-                <div class="space-y-2" id="topCatsList">
-                    <!-- Рейтинг категорій -->
+                <div class="glass-card p-6 mb-6">
+                    <h3 class="text-xs font-bold uppercase opacity-40 mb-4 tracking-widest">Топ категорій</h3>
+                    <div class="space-y-3" id="topCatsList"></div>
                 </div>
               </div>
             </section>
@@ -621,13 +652,18 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     mF: '', uniqueMonths: [],
     openCat: '',    // Розгорнута категорія в огляді
     addMode: 'single', bulk: [], // Режим додавання і рядки таблиці
+    anUsers: { 'Влад': true, 'Таня': true }, // Кого показувати на графіках аналітики
     uF_home: 'All', // Фільтр юзера на головній
     uF_hist: 'All', // Фільтр юзера в історії
     cF_hist: 'All', // Фільтр категорії в історії
     scF_hist: 'All', // Фільтр підкатегорії в історії
     dayF_hist: 'All'
 };
-        let charts = { pie: null, bar: null, daily: null };
+        let charts = { bar: null, daily: null, month: null };
+        let monthChartKeys = []; // ключі місяців у порядку стовпчиків, для кліку
+        const MONTHS = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
+        const MONTHS_SHORT = ["січ", "лют", "бер", "кві", "трав", "черв", "лип", "серп", "вер", "жовт", "лист", "груд"];
+        const UCOLOR = { 'Влад': '#3b82f6', 'Таня': '#ec4899' };
 
         // --- CORE ---
        function switchTab(id, el) {
@@ -685,8 +721,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             const { data, error } = await sb.from('expenses').select('*').order('date', { ascending: false });
             if (error) return;
 
-            const monthsNames = ["Січень", "Лютий", "Березень", "Квітень", "Травень", "Червень", "Липень", "Серпень", "Вересень", "Жовтень", "Листопад", "Грудень"];
-            
+            const monthsNames = MONTHS;
+
             s.d = data.map(item => {
                 const dateObj = new Date(item.date);
                 const iso = toISODay(dateObj);
@@ -1174,77 +1210,235 @@ function renderHistList(rows) {
     hList.innerHTML = `<p class="tx-summary">${rows.length} витрат · ₴${total.toLocaleString()} · ${days.length} ${days.length === 1 ? 'день' : 'дн.'}</p>
         <div class="tx-list">${body}</div>`;
 }
-        // --- АНАЛІТИКА (ВИПРАВЛЕНО) ---
-function renderAnalytics() {
-    // 1. Створюємо масив даних лише для обраного місяця
-    const filteredMonthData = s.d.filter(i => i.mId === s.mF);
-    
-    if (!filteredMonthData.length) {
-        console.log("Немає даних для аналізу");
-        return;
+        // --- АНАЛІТИКА ---
+
+// Короткий формат: 1070 → «1,1к» (щоб підписи не налазили один на одного)
+function shortNum(v) {
+    return v >= 1000 ? String(Math.round(v / 100) / 10).replace('.', ',') + 'к' : String(Math.round(v));
+}
+
+// Плагін: підписи сум над точками. Спершу малює найбільші значення,
+// решту пропускає, якщо підпис накладається на вже намальований.
+const valueLabels = {
+    id: 'valueLabels',
+    afterDatasetsDraw(chart) {
+        const ctx = chart.ctx, drawn = [], items = [];
+        chart.data.datasets.forEach((ds, di) => {
+            const meta = chart.getDatasetMeta(di);
+            if (meta.hidden) return;
+            meta.data.forEach((pt, i) => {
+                const v = ds.data[i];
+                if (v) items.push({ v, x: pt.x, y: pt.y, color: ds.borderColor || '#fff' });
+            });
+        });
+        items.sort((a, b) => b.v - a.v);
+
+        ctx.save();
+        ctx.font = '800 8px ui-sans-serif, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        items.forEach(it => {
+            const t = shortNum(it.v), w = ctx.measureText(t).width + 6;
+            const box = [it.x - w / 2, it.x + w / 2, it.y - 15, it.y - 2];
+            const hit = drawn.some(d => !(box[1] < d[0] || box[0] > d[1] || box[3] < d[2] || box[2] > d[3]));
+            if (hit) return;
+            drawn.push(box);
+            ctx.fillStyle = it.color;
+            ctx.fillText(t, it.x, it.y - 4);
+        });
+        ctx.restore();
     }
+};
 
-    // 2. Викликаємо графік по днях (новий блок)
-    renderDailyChart(filteredMonthData);
+// Плагін: сума всього стовпчика над стопкою (а не над кожним сегментом)
+const stackTotals = {
+    id: 'stackTotals',
+    afterDatasetsDraw(chart) {
+        const vis = chart.data.datasets
+            .map((ds, di) => ({ ds, meta: chart.getDatasetMeta(di) }))
+            .filter(x => !x.meta.hidden);
+        if (!vis.length) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '800 9px ui-sans-serif, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        chart.data.labels.forEach((_, i) => {
+            let total = 0, top = Infinity;
+            vis.forEach(({ ds, meta }) => {
+                total += ds.data[i] || 0;
+                const el = meta.data[i];
+                if (el && el.y < top) top = el.y;
+            });
+            if (total > 0) ctx.fillText(shortNum(total), vis[0].meta.data[i].x, top - 4);
+        });
+        ctx.restore();
+    }
+};
 
-    // 3. Рахуємо суми для Pie Chart та Bar Chart
-    const catSums = {}; 
+function toggleAnUser(u) {
+    const other = u === 'Влад' ? 'Таня' : 'Влад';
+    // Не даємо вимкнути обох — інакше графіки порожні
+    if (s.anUsers[u] && !s.anUsers[other]) return;
+    s.anUsers[u] = !s.anUsers[u];
+    document.getElementById('anBtn-' + u).classList.toggle('active', s.anUsers[u]);
+    renderAnalytics();
+}
+
+function monthLabel(key) {
+    const [y, m] = key.split('-');
+    return MONTHS[+m - 1] + ' ' + y;
+}
+
+function prevMonthKey(key) {
+    const [y, m] = key.split('-').map(Number);
+    const d = new Date(y, m - 2, 1);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+}
+
+function renderAnalytics() {
+    const lbl = document.getElementById('anMonth');
+    if (lbl) lbl.innerText = s.mF ? monthLabel(s.mF) : '—';
+
+    const monthRows = s.d.filter(i => i.mId === s.mF && s.anUsers[i.u]);
+
+    renderDailyChart(monthRows);
+    renderMonthChart();   // цей графік завжди по всій історії, не лише за місяць
+    renderUserBar();
+    renderTopCats(monthRows);
+}
+
+// Влад vs Таня за обраний місяць — показуємо обох завжди, це ж порівняння
+function renderUserBar() {
+    const rows = s.d.filter(i => i.mId === s.mF);
     let vlad = 0, tania = 0;
-    
-    filteredMonthData.forEach(i => {
-        catSums[i.c] = (catSums[i.c] || 0) + i.a;
-        if(i.u === 'Влад') vlad += i.a; else tania += i.a;
-    });
+    rows.forEach(i => { if (i.u === 'Влад') vlad += i.a; else tania += i.a; });
 
-    // 4. Doughnut Chart (Розподіл за категоріями)
-    const ctxPie = document.getElementById('pieChart').getContext('2d');
-    if(charts.pie) charts.pie.destroy();
-    charts.pie = new Chart(ctxPie, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(catSums),
-            datasets: [{
-                data: Object.values(catSums),
-                // Палітра має покривати всі категорії, інакше Chart.js фарбує зайві слайси однаково
-                backgroundColor: ['#6366f1', '#a855f7', '#ec4899', '#f43f5e', '#f59e0b', '#10b981',
-                                  '#3b82f6', '#8b5cf6', '#f472b6', '#ef4444', '#eab308', '#14b8a6',
-                                  '#0ea5e9', '#c084fc', '#fb7185', '#fb923c', '#84cc16', '#2dd4bf'],
-                borderWidth: 0,
-                hoverOffset: 15
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            cutout: '75%',
-            plugins: { legend: { position: 'bottom', labels: { color: 'rgba(255,255,255,0.6)', font: { size: 10 }, padding: 20 } } } 
-        }
-    });
-
-    // 5. Bar Chart (Влад vs Таня)
-    const ctxBar = document.getElementById('barChart').getContext('2d');
-    if(charts.bar) charts.bar.destroy();
-    charts.bar = new Chart(ctxBar, {
+    const ctx = document.getElementById('barChart').getContext('2d');
+    if (charts.bar) charts.bar.destroy();
+    charts.bar = new Chart(ctx, {
         type: 'bar',
+        plugins: [valueLabels],
         data: {
             labels: ['Влад', 'Таня'],
             datasets: [{
                 data: [vlad, tania],
+                borderColor: ['#3b82f6', '#ec4899'],
                 backgroundColor: ['#3b82f6', '#ec4899'],
                 borderRadius: 12,
                 barThickness: 40
             }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            scales: { 
-                y: { display: false }, 
-                x: { ticks: { color: '#fff', font: { weight: 'bold' } }, grid: { display: false } } 
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 16 } },
+            scales: {
+                y: { display: false, beginAtZero: true },
+                x: { ticks: { color: '#fff', font: { weight: 'bold' } }, grid: { display: false } }
             },
             plugins: { legend: { display: false } }
         }
     });
+}
+
+// Динаміка по місяцях за весь час, стопкою по юзерах; клік — перехід у місяць
+function renderMonthChart() {
+    const byMonth = {};
+    s.d.forEach(i => {
+        if (!s.anUsers[i.u]) return;
+        byMonth[i.mId] = byMonth[i.mId] || { 'Влад': 0, 'Таня': 0 };
+        byMonth[i.mId][i.u] = (byMonth[i.mId][i.u] || 0) + i.a;
+    });
+
+    monthChartKeys = Object.keys(byMonth).sort();
+    const labels = monthChartKeys.map(k => MONTHS_SHORT[+k.slice(5) - 1]);
+
+    const sets = ['Влад', 'Таня'].filter(u => s.anUsers[u]).map(u => ({
+        label: u,
+        data: monthChartKeys.map(k => byMonth[k][u] || 0),
+        backgroundColor: monthChartKeys.map(k => k === s.mF ? UCOLOR[u] : UCOLOR[u] + '66'),
+        borderRadius: 6,
+        borderSkipped: false
+    }));
+
+    const ctx = document.getElementById('monthChart').getContext('2d');
+    if (charts.month) charts.month.destroy();
+    charts.month = new Chart(ctx, {
+        type: 'bar',
+        plugins: [stackTotals],
+        data: { labels, datasets: sets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 18 } },
+            scales: {
+                x: { stacked: true, ticks: { color: 'rgba(255,255,255,0.4)', font: { size: 9 } }, grid: { display: false } },
+                y: { stacked: true, display: false, beginAtZero: true }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { title: items => monthLabel(monthChartKeys[items[0].dataIndex]) } }
+            },
+            onClick: (e, els) => {
+                if (!els.length) return;
+                const key = monthChartKeys[els[0].index];
+                if (!key || key === s.mF) return;
+                s.mF = key;
+                s.openCat = '';
+                s.dayF_hist = 'All';
+                renderOverview();
+                renderAnalytics();
+            }
+        }
+    });
+}
+
+// Рейтинг категорій за місяць + порівняння з попереднім місяцем
+function renderTopCats(monthRows) {
+    const box = document.getElementById('topCatsList');
+    if (!box) return;
+
+    const prevRows = s.d.filter(i => i.mId === prevMonthKey(s.mF) && s.anUsers[i.u]);
+    const cur = {}, prev = {};
+    monthRows.forEach(i => cur[i.c] = (cur[i.c] || 0) + i.a);
+    prevRows.forEach(i => prev[i.c] = (prev[i.c] || 0) + i.a);
+
+    const list = Object.entries(cur).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    if (!list.length) {
+        box.innerHTML = `<p class="text-center opacity-20 py-6 text-xs">Немає витрат за цей місяць</p>`;
+        return;
+    }
+
+    const total = Object.values(cur).reduce((a, b) => a + b, 0);
+    const max = list[0][1];
+
+    box.innerHTML = list.map(([name, v]) => {
+        const p = prev[name];
+        let delta = '<span class="opacity-25">новий</span>';
+        if (p > 0) {
+            const d = Math.round((v - p) / p * 100);
+            const color = d > 0 ? '#f87171' : '#4ade80';
+            // Понад 3× відсотки стають нечитабельними («+2581%») — показуємо кратність
+            if (d >= 200) delta = `<span style="color:${color}">↑ ×${Math.round(v / p)}</span>`;
+            else if (d === 0) delta = '<span class="opacity-25">=</span>';
+            else delta = `<span style="color:${color}">${d > 0 ? '↑ +' : '↓ '}${d}%</span>`;
+        }
+        return `
+        <div>
+            <div class="flex justify-between items-baseline mb-1 gap-2">
+                <span class="text-[11px] truncate">${esc(name)}</span>
+                <span class="text-[11px] font-bold whitespace-nowrap">₴${v.toLocaleString()}
+                    <span class="text-[9px] opacity-30">${Math.round(v / total * 100)}%</span>
+                    <span class="text-[9px] ml-1">${delta}</span>
+                </span>
+            </div>
+            <div class="h-[3px] rounded-full bg-white/5 overflow-hidden">
+                <div class="h-full rounded-full" style="width:${Math.round(v / max * 100)}%; background: var(--accent-grad)"></div>
+            </div>
+        </div>`;
+    }).join('');
 }
 function renderDaySelector() {
     const container = document.getElementById('daySelector');
@@ -1280,7 +1474,7 @@ function setHistDay(day, el) {
     s.dayF_hist = day;
     renderHistory();
 }
-// --- ГРАФІК ПО ДНЯХ (ВИПРАВЛЕНО) ---
+// --- ГРАФІК ПО ДНЯХ ---
 function renderDailyChart(data) {
     const days = {};
 
@@ -1296,28 +1490,30 @@ function renderDailyChart(data) {
 
     const keys = Object.keys(days);
     const labels = keys.map(k => k.slice(8, 10) + '.' + k.slice(5, 7)); // "DD.MM"
-    const vladData = keys.map(k => days[k]['Влад']);
-    const taniaData = keys.map(k => days[k]['Таня']);
+
+    // Лінію малюємо лише для увімкнених юзерів
+    const sets = ['Влад', 'Таня'].filter(u => s.anUsers[u]).map(u => ({
+        label: u,
+        data: keys.map(k => days[k][u] || 0),
+        borderColor: UCOLOR[u],
+        backgroundColor: u === 'Влад' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(236, 72, 153, 0.1)',
+        fill: true, tension: 0.4, pointRadius: 3
+    }));
 
     const ctx = document.getElementById('dailyChart').getContext('2d');
-    if(!charts) charts = {}; // Захист якщо об'єкт charts не ініціалізовано
     if(charts.daily) charts.daily.destroy();
-    
+
     charts.daily = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'Влад', data: vladData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 3 },
-                { label: 'Таня', data: taniaData, borderColor: '#ec4899', backgroundColor: 'rgba(236, 72, 153, 0.1)', fill: true, tension: 0.4, pointRadius: 3 }
-            ]
-        },
-        options: { 
-            responsive: true, 
+        plugins: [valueLabels],
+        data: { labels, datasets: sets },
+        options: {
+            responsive: true,
             maintainAspectRatio: false,
-            scales: { 
-                y: { display: false }, 
-                x: { ticks: { color: 'rgba(255,255,255,0.3)', font: {size: 8} }, grid: { color: 'rgba(255,255,255,0.05)' } } 
+            layout: { padding: { top: 18 } }, // місце під підписи сум
+            scales: {
+                y: { display: false, beginAtZero: true },
+                x: { ticks: { color: 'rgba(255,255,255,0.3)', font: {size: 8} }, grid: { color: 'rgba(255,255,255,0.05)' } }
             },
             plugins: { legend: { display: false } }
         }
