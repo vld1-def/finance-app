@@ -283,6 +283,19 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 .bulk-row-del { color: #f87171; opacity: 0.5; padding: 6px 4px; font-size: 12px; }
 .bulk-row-del:active { opacity: 1; }
 
+/* ===== БЮДЖЕТ ===== */
+.bud-row { display: grid; grid-template-columns: 1fr 100px 28px; gap: 6px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.bud-row:last-child { border-bottom: 0; }
+.bud-row .field { padding: 8px 10px; font-size: 12px; border-radius: 10px; height: 36px; }
+.bud-link { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bud-link select { width: 100%; }
+.bud-link select:disabled { opacity: 0.3; }
+.bud-bar { position: relative; height: 5px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.bud-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; }
+.bud-pace { position: absolute; top: -2px; bottom: -2px; width: 2px; background: rgba(255,255,255,0.7); border-radius: 2px; }
+.bud-check { width: 20px; height: 20px; border-radius: 7px; border: 1.5px solid rgba(255,255,255,0.25); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+.bud-check.on { background: #22c55e; border-color: #22c55e; color: #000; font-weight: 900; }
+
 /* ===== ДЕСКТОПНА ВЕРСІЯ ===== */
 @media (min-width: 900px) {
     /* Нижня панель перетворюється на бічне меню */
@@ -338,7 +351,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 
     .add-inner { max-width: 560px; }
     .add-inner.bulk-mode { max-width: 1120px; } /* у режимі таблиці даємо всю ширину */
-    .hist-inner { max-width: 820px; } /* суцільний список — вужче читається краще */
+    .hist-inner { max-width: 820px; }
+    .bud-inner { max-width: 720px; } /* суцільний список — вужче читається краще */
     .hist-filters { grid-template-columns: 1fr 1fr 1fr; }
     .hist-filters .hf-wide { grid-column: auto; }
 
@@ -389,6 +403,9 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
                     </div>
                     <button onclick="stepMonth(1)" class="p-2 opacity-50 active:scale-90 transition-all text-xl">→</button>
                 </div>
+
+                <!-- Бюджет на місяць (ліміти) -->
+                <div id="budgetHome" class="mb-6"></div>
 
                 <!-- Categories Block -->
                 <div class="space-y-3">
@@ -547,6 +564,63 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
               </div>
             </section>
 
+            <!-- SCREEN 6: BUDGET (ліміти на місяць) -->
+            <section id="budget" class="screen">
+              <div class="screen-inner bud-inner">
+                <div id="budgetHint" style="display:none" class="glass-card p-4 mb-4 border-l-4 border-amber-500">
+                    <p class="text-[11px] font-bold mb-2">Бюджет зараз зберігається лише на цьому пристрої. Щоб він був спільним на всіх телефонах — створи таблицю в Supabase → SQL Editor:</p>
+                    <code class="block text-[9px] opacity-60 leading-relaxed break-all">create table budgets (month text primary key, data jsonb not null, updated_at timestamptz default now());<br>alter table budgets enable row level security;<br>create policy "budgets_all" on budgets for all using (true) with check (true);</code>
+                </div>
+
+                <!-- Місяць бюджету -->
+                <div class="flex items-center justify-between glass-card px-6 py-4 mb-4">
+                    <button onclick="budStep(-1)" class="p-2 opacity-50 active:scale-90 transition-all text-xl">←</button>
+                    <div class="text-center">
+                        <p id="budMonth" class="text-sm font-bold tracking-tight">—</p>
+                        <p class="text-[8px] opacity-30 uppercase font-black">Бюджет на місяць</p>
+                    </div>
+                    <button onclick="budStep(1)" class="p-2 opacity-50 active:scale-90 transition-all text-xl">→</button>
+                </div>
+
+                <div class="glass-card p-5 mb-4 space-y-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[9px] font-bold uppercase opacity-40 tracking-widest shrink-0 w-14">Дохід</span>
+                        <input type="number" id="budIncome" inputmode="decimal" placeholder="100000" class="field flex-1 text-right text-lg font-bold">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[9px] font-bold uppercase opacity-40 tracking-widest shrink-0 w-14">Чиї витрати</span>
+                        <div class="flex flex-1 bg-white/5 p-1 rounded-2xl border border-white/10" id="budWho">
+                            <button data-w="All" onclick="setBudWho('All')" class="eu-btn">РАЗОМ</button>
+                            <button data-w="Влад" onclick="setBudWho('Влад')" class="eu-btn">ВЛАД</button>
+                            <button data-w="Таня" onclick="setBudWho('Таня')" class="eu-btn">ТАНЯ</button>
+                        </div>
+                    </div>
+                    <p id="budSummary" class="text-[11px] opacity-60 text-center"></p>
+                </div>
+
+                <div class="glass-card p-5 mb-4">
+                    <div class="flex items-baseline justify-between mb-1">
+                        <h3 class="text-[10px] font-bold opacity-40 uppercase tracking-widest">Статті бюджету</h3>
+                        <p class="text-[8px] opacity-25 uppercase tracking-widest">категорія — щоб рахувати витрачене</p>
+                    </div>
+                    <div id="budRows"></div>
+                    <div class="flex gap-2 pt-3">
+                        <button onclick="budAddRow()" class="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all">+ Стаття</button>
+                        <button onclick="budCopyPrev()" class="flex-1 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all">⧉ З мин. місяця</button>
+                    </div>
+                </div>
+
+                <details id="budPasteBox" class="glass-card p-5 mb-4">
+                    <summary class="text-[10px] font-bold opacity-60 uppercase tracking-widest cursor-pointer">📋 Вставити список з таблиці</summary>
+                    <p class="text-[10px] opacity-40 mt-3 mb-2 leading-relaxed">Скопіюй дві колонки з Google Таблиць (сума + назва) і встав сюди. Рядок лише з сумою — це дохід. Категорії підберуться автоматично за назвою, якщо схожі.</p>
+                    <textarea id="budPaste" rows="6" class="field font-mono text-[11px]" placeholder="100 000,00&#10;3 000,00	кава&#10;15 000,00	оренда"></textarea>
+                    <button onclick="budImport()" class="w-full mt-3 py-3 rounded-xl bg-white/10 border border-white/10 text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all">Розібрати й замінити статті</button>
+                </details>
+
+                <button onclick="saveBudget()" id="budSaveBtn" class="w-full py-4 rounded-2xl font-black bg-white text-black uppercase text-[11px] tracking-[0.2em] active:scale-95 transition-all">Зберегти бюджет</button>
+              </div>
+            </section>
+
             <!-- SCREEN 5: HISTORY (Hidden by default, triggered by Tab) -->
             <section id="history" class="screen">
   <div class="screen-inner hist-inner">
@@ -587,6 +661,10 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             <div class="tab-item" onclick="switchTab('analytics', this)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 Аналіз
+            </div>
+            <div class="tab-item" id="tab-budget" onclick="switchTab('budget', this)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18zm0-4a5 5 0 100-10 5 5 0 000 10zm0-4a1 1 0 100-2 1 1 0 000 2z"></path></svg>
+                Бюджет
             </div>
             <div class="tab-item" onclick="switchTab('options', this)">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
@@ -675,6 +753,7 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
     if(el.classList.contains('tab-item')) el.classList.add('active');
 
     if(id === 'analytics') renderAnalytics();
+    if(id === 'budget') renderBudget();
     if(id === 'add' && s.addMode === 'bulk') renderBulk(); // категорії могли змінитись
     
     // ФІКС ІСТОРІЇ: скидаємо фільтри при вході
@@ -740,8 +819,13 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
             s.d.sort((a, b) => b.ts - a.ts);
 
             const monthsSet = [...new Set(s.d.map(i => i.mId))].sort().reverse();
+            // Поточний календарний місяць є в степері завжди — навіть якщо витрат ще нема, щоб бачити його бюджет
+            const curM = todayISO().slice(0, 7);
+            if (!monthsSet.includes(curM)) { monthsSet.push(curM); monthsSet.sort().reverse(); }
             s.uniqueMonths = monthsSet;
             if (!s.mF && monthsSet.length > 0) s.mF = monthsSet[0];
+
+            if (!s.budgetsLoaded) { await loadBudgets(); s.budgetsLoaded = true; }
             
             renderOverview();
             renderPickers();
@@ -778,7 +862,8 @@ input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); opaci
 function renderOverview() {
     const monthData = s.d.filter(i => i.mId === s.mF);
     const labelEl = document.getElementById('mLabel');
-    if (monthData.length > 0) labelEl.innerText = monthData[0].mLab;
+    if (s.mF) labelEl.innerText = monthLabel(s.mF);
+    renderBudgetHome();
 
     // Рахуємо загальні суми (завжди показуємо повні суми в картках зверху)
     let totalVlad = 0, totalTania = 0;
@@ -1518,6 +1603,348 @@ function renderDailyChart(data) {
             plugins: { legend: { display: false } }
         }
     });
+}
+
+// --- БЮДЖЕТ: ліміти на місяць ---
+// Зберігається в таблиці budgets (month 'YYYY-MM' → data jsonb). Якщо таблиці ще нема — у localStorage цього пристрою.
+// data = { income, who: 'All'|'Влад'|'Таня', items: [{ name, amount, cat, sub, done }] }
+// Стаття з категорією рахує витрачене автоматично; без категорії (оренда, «відкласти») — відмічається галочкою.
+const BUDGET_LS = 'finBudgets';
+s.budgets = {}; s.budgetDb = true; s.bM = ''; s.bDraft = null; s.bDirty = false;
+
+const money = v => '₴' + Math.round(v).toLocaleString('uk-UA');
+
+function shiftMonth(key, dir) {
+    const [y, m] = key.split('-').map(Number);
+    const d = new Date(y, m - 1 + dir, 1);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
+}
+
+async function loadBudgets() {
+    const { data, error } = await sb.from('budgets').select('*');
+    s.budgets = {};
+    if (error) {
+        s.budgetDb = false;
+        try { s.budgets = JSON.parse(localStorage.getItem(BUDGET_LS) || '{}') || {}; } catch (e) { s.budgets = {}; }
+    } else {
+        s.budgetDb = true;
+        data.forEach(r => { if (r.data) s.budgets[r.month] = r.data; });
+    }
+    document.getElementById('budgetHint').style.display = s.budgetDb ? 'none' : 'block';
+}
+
+async function persistBudget(month, data) {
+    const empty = !data.items.length && !data.income;
+    if (empty) delete s.budgets[month]; else s.budgets[month] = data;
+
+    if (s.budgetDb) {
+        const { error } = empty
+            ? await sb.from('budgets').delete().eq('month', month)
+            : await sb.from('budgets').upsert({ month, data, updated_at: new Date().toISOString() });
+        if (!error) return;
+        alert('Не вдалось зберегти в базу: ' + error.message + '\n\nЗбережено лише на цьому пристрої.');
+        s.budgetDb = false;
+        document.getElementById('budgetHint').style.display = 'block';
+    }
+    try { localStorage.setItem(BUDGET_LS, JSON.stringify(s.budgets)); } catch (e) {}
+}
+
+// Скільки витрачено по статті за місяць (null — стаття без категорії)
+function budgetSpent(month, b, it) {
+    if (!it.cat) return null;
+    return s.d.filter(i => i.mId === month && (b.who === 'All' || !b.who || i.u === b.who)
+        && i.c === it.cat && (!it.sub || i.sc === it.sub)).reduce((t, i) => t + i.a, 0);
+}
+
+// --- Блок на головному екрані ---
+function renderBudgetHome() {
+    const box = document.getElementById('budgetHome');
+    if (!box || !s.mF) return;
+    const b = s.budgets[s.mF];
+
+    if (!b || !b.items || !b.items.length) {
+        box.innerHTML = `<div onclick="goBudget('${s.mF}')" class="glass-card px-5 py-4 flex justify-between items-center cursor-pointer active:scale-[0.99] transition-all">
+            <span class="text-[11px] opacity-50">🎯 Бюджет на ${monthLabel(s.mF).toLowerCase()} не задано</span>
+            <span class="text-[10px] font-bold opacity-60 uppercase tracking-widest">Задати →</span>
+        </div>`;
+        return;
+    }
+
+    const who = b.who && b.who !== 'All' ? b.who : 'Разом';
+    const planned = b.items.reduce((t, x) => t + (x.amount || 0), 0);
+    let used = 0;
+    const rows = b.items.map((it, idx) => {
+        const spent = budgetSpent(s.mF, b, it);
+        if (spent === null) {
+            if (it.done) used += it.amount;
+            return `<div class="flex items-center gap-3 py-1.5">
+                <button onclick="toggleBudDone('${s.mF}', ${idx})" class="bud-check ${it.done ? 'on' : ''}" title="Відмітити виконаним">${it.done ? '✓' : ''}</button>
+                <span class="flex-1 text-[12px] truncate ${it.done ? 'opacity-40 line-through' : ''}">${esc(it.name)}</span>
+                <span class="text-[12px] font-bold tabular-nums ${it.done ? 'opacity-40' : ''}">${money(it.amount)}</span>
+            </div>`;
+        }
+        used += spent;
+        const pct = it.amount ? spent / it.amount * 100 : (spent ? 100 : 0);
+        const color = pct > 100 ? '#f87171' : pct >= 80 ? '#fbbf24' : '#4ade80';
+        const left = it.amount - spent;
+        return `<div class="py-1.5">
+            <div class="flex justify-between items-baseline gap-2 mb-1">
+                <span class="text-[12px] truncate">${esc(it.name)}${it.sub ? ` <span class="opacity-30 text-[10px]">· ${esc(it.sub)}</span>` : ''}</span>
+                <span class="text-[11px] whitespace-nowrap tabular-nums"><b>${money(spent)}</b> <span class="opacity-40">/ ${money(it.amount)}</span></span>
+            </div>
+            <div class="bud-bar"><i style="width:${Math.min(100, pct)}%; background:${color}"></i></div>
+            <p class="text-[9px] mt-1 text-right" style="color:${left < 0 ? '#f87171' : 'rgba(255,255,255,0.35)'}">${left < 0 ? 'перевищено на ' + money(-left) : 'лишилось ' + money(left)}</p>
+        </div>`;
+    }).join('');
+
+    // Витрати, що не потрапили в жодну статтю з категорією
+    const covered = b.items.filter(x => x.cat);
+    const outside = s.d.filter(i => i.mId === s.mF && (b.who === 'All' || !b.who || i.u === b.who)
+        && !covered.some(x => x.cat === i.c && (!x.sub || x.sub === i.sc))).reduce((t, i) => t + i.a, 0);
+
+    // Позначка «де маємо бути» — частка місяця, що минула (лише для поточного місяця)
+    const curM = todayISO().slice(0, 7);
+    let pace = '';
+    if (s.mF === curM) {
+        const now = new Date(), days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        pace = `<span class="bud-pace" style="left:${Math.round(now.getDate() / days * 100)}%" title="Сьогодні"></span>`;
+    }
+    const totPct = planned ? used / planned * 100 : 0;
+    const totColor = totPct > 100 ? '#f87171' : 'var(--accent-grad)';
+    const free = (b.income || 0) - planned;
+
+    box.innerHTML = `<div class="glass-card p-5">
+        <div class="flex justify-between items-center mb-3 cursor-pointer" onclick="goBudget('${s.mF}')">
+            <h3 class="text-[10px] font-bold opacity-40 uppercase tracking-widest">🎯 Бюджет · ${esc(who)}</h3>
+            <span class="text-[9px] font-bold opacity-40 uppercase tracking-widest">Змінити →</span>
+        </div>
+        <div class="flex justify-between items-baseline mb-2">
+            <span class="text-2xl font-black tracking-tighter tabular-nums">${money(used)}</span>
+            <span class="text-[11px] opacity-50 tabular-nums">з ${money(planned)} · ${Math.round(totPct)}%</span>
+        </div>
+        <div class="bud-bar mb-2" style="overflow:visible"><i style="width:${Math.min(100, totPct)}%; background:${totColor}"></i>${pace}</div>
+        <p class="text-[10px] opacity-40 mb-3">${b.income ? `Дохід ${money(b.income)} · ${free >= 0 ? 'нерозподілено ' + money(free) : 'план більший за дохід на ' + money(-free)}` : ''}${outside ? `${b.income ? ' · ' : ''}поза бюджетом ${money(outside)}` : ''}</p>
+        <div class="border-t border-white/10 pt-2">${rows}</div>
+    </div>`;
+}
+
+async function toggleBudDone(month, idx) {
+    const b = s.budgets[month];
+    if (!b || !b.items[idx]) return;
+    b.items[idx].done = !b.items[idx].done;
+    renderBudgetHome();
+    await persistBudget(month, b);
+    if (s.bDraft && s.bDraft.month === month && !s.bDirty) s.bDraft = null;
+}
+
+function goBudget(month) {
+    if (s.bDirty && s.bM !== month && !confirm('Є незбережені зміни в бюджеті. Відкрити інший місяць без збереження?')) return;
+    if (s.bM !== month) { s.bM = month; s.bDraft = null; s.bDirty = false; }
+    switchTab('budget', document.getElementById('tab-budget'));
+}
+
+// --- Екран «Бюджет» (редактор) ---
+function defaultBudgetMonth() {
+    const cur = todayISO().slice(0, 7);
+    // Під кінець місяця логічніше планувати наступний
+    return new Date().getDate() >= 20 ? shiftMonth(cur, 1) : cur;
+}
+
+function budgetDraft() {
+    if (!s.bM) s.bM = defaultBudgetMonth();
+    if (!s.bDraft || s.bDraft.month !== s.bM) {
+        const b = s.budgets[s.bM];
+        s.bDraft = {
+            month: s.bM,
+            income: b && b.income ? b.income : '',
+            who: (b && b.who) || 'All',
+            items: b && b.items && b.items.length ? b.items.map(x => ({ ...x })) : [budBlankRow()]
+        };
+        s.bDirty = false;
+    }
+    return s.bDraft;
+}
+
+function budBlankRow() { return { name: '', amount: '', cat: '', sub: '', done: false }; }
+
+function budStep(dir) {
+    if (s.bDirty && !confirm('Є незбережені зміни. Перейти без збереження?')) return;
+    s.bM = shiftMonth(s.bM || defaultBudgetMonth(), dir);
+    s.bDraft = null;
+    renderBudget();
+}
+
+function budTouch() { s.bDirty = true; budSummary(); }
+
+function renderBudget() {
+    const d = budgetDraft();
+    document.getElementById('budMonth').innerText = monthLabel(d.month);
+    const inc = document.getElementById('budIncome');
+    inc.value = d.income;
+    inc.oninput = () => { d.income = inc.value; budTouch(); };
+    document.querySelectorAll('#budWho .eu-btn').forEach(b => b.classList.toggle('active', b.dataset.w === d.who));
+    renderBudRows();
+}
+
+function renderBudRows() {
+    const d = budgetDraft();
+    const box = document.getElementById('budRows');
+    const catOpts = sel => {
+        const names = s.cats.map(c => c.name);
+        if (sel && !names.includes(sel)) names.unshift(sel);
+        return `<option value="">— без категорії —</option>` + names.map(n => `<option value="${esc(n)}" ${n === sel ? 'selected' : ''}>${esc(n)}</option>`).join('');
+    };
+
+    box.innerHTML = d.items.map((r, i) => {
+        const subs = s.subs.filter(x => x.category === r.cat);
+        return `<div class="bud-row" data-idx="${i}">
+            <input type="text" class="field" data-f="name" value="${esc(r.name)}" placeholder="Назва (кава, оренда…)">
+            <input type="number" inputmode="decimal" class="field text-right" data-f="amount" value="${r.amount}" placeholder="0">
+            <button onclick="budDelRow(${i})" class="bulk-row-del" title="Видалити">✕</button>
+            <div class="bud-link">
+                <select data-f="cat">${catOpts(r.cat)}</select>
+                <select data-f="sub" ${subs.length ? '' : 'disabled'}><option value="">вся категорія</option>${subs.map(x => `<option value="${esc(x.name)}" ${r.sub === x.name ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>
+            </div>
+        </div>`;
+    }).join('');
+
+    box.oninput = e => {
+        const f = e.target.dataset.f;
+        if (!f) return;
+        d.items[+e.target.closest('.bud-row').dataset.idx][f] = e.target.value;
+        budTouch();
+    };
+    box.onchange = e => {
+        const f = e.target.dataset.f;
+        if (f !== 'cat' && f !== 'sub') return;
+        const r = d.items[+e.target.closest('.bud-row').dataset.idx];
+        r[f] = e.target.value;
+        if (f === 'cat') { r.sub = ''; renderBudRows(); } // підкатегорії залежать від категорії
+        budTouch();
+    };
+    budSummary();
+}
+
+function budSummary() {
+    const d = budgetDraft();
+    const planned = d.items.reduce((t, x) => t + (parseFloat(x.amount) || 0), 0);
+    const income = parseFloat(d.income) || 0;
+    const free = income - planned;
+    document.getElementById('budSummary').innerHTML = `Заплановано <b>${money(planned)}</b>`
+        + (income ? ` · <span style="color:${free < 0 ? '#f87171' : '#4ade80'}">${free < 0 ? 'бракує ' + money(-free) : 'нерозподілено ' + money(free)}</span>` : '');
+    const btn = document.getElementById('budSaveBtn');
+    btn.innerText = s.bDirty ? 'Зберегти бюджет' : (s.budgets[d.month] ? 'Збережено ✓' : 'Зберегти бюджет');
+}
+
+function setBudWho(w) {
+    budgetDraft().who = w;
+    document.querySelectorAll('#budWho .eu-btn').forEach(b => b.classList.toggle('active', b.dataset.w === w));
+    budTouch();
+}
+
+function budAddRow() {
+    budgetDraft().items.push(budBlankRow());
+    renderBudRows();
+    const rows = document.querySelectorAll('#budRows .bud-row');
+    rows[rows.length - 1].querySelector('[data-f="name"]').focus();
+}
+
+function budDelRow(i) {
+    const d = budgetDraft();
+    d.items.splice(i, 1);
+    if (!d.items.length) d.items.push(budBlankRow());
+    renderBudRows();
+    budTouch();
+}
+
+function budCopyPrev() {
+    const d = budgetDraft();
+    const prevKey = shiftMonth(d.month, -1);
+    const prev = s.budgets[prevKey];
+    if (!prev || !prev.items || !prev.items.length) return alert('За ' + monthLabel(prevKey).toLowerCase() + ' бюджету немає');
+    const hasItems = d.items.some(x => x.name || x.amount);
+    if (hasItems && !confirm('Замінити поточні статті статтями з ' + monthLabel(prevKey).toLowerCase() + '?')) return;
+    d.items = prev.items.map(x => ({ ...x, done: false }));
+    if (!d.income && prev.income) d.income = prev.income;
+    d.who = prev.who || d.who;
+    renderBudget();
+    budTouch();
+}
+
+// «15 000,00» / «15000» / «1,500.50» → число
+function parseMoney(str) {
+    let v = String(str).replace(/[\s  ₴]|грн\.?/gi, '');
+    if (/,\d{1,2}$/.test(v)) v = v.replace(/\./g, '').replace(',', '.');
+    else v = v.replace(/,/g, '');
+    return parseFloat(v);
+}
+
+const normName = t => String(t).toLowerCase().replace(/[^\p{L}\d]+/gu, ' ').trim();
+
+// Підбір категорії/підкатегорії за назвою статті
+function guessCat(name) {
+    const n = normName(name);
+    if (!n) return { cat: '', sub: '' };
+    const words = n.split(' ').filter(w => w.length >= 3);
+    const hit = label => {
+        const l = normName(label);
+        return l.length >= 3 && (n.includes(l) || l.includes(n) || words.some(w => l.split(' ').some(lw => lw.startsWith(w.slice(0, 5)) && w.length >= 4)));
+    };
+    const sub = s.subs.find(x => hit(x.name));
+    if (sub) return { cat: sub.category, sub: sub.name };
+    const cat = s.cats.find(c => hit(c.name));
+    return { cat: cat ? cat.name : '', sub: '' };
+}
+
+function budImport() {
+    const txt = document.getElementById('budPaste').value;
+    const d = budgetDraft();
+    let income = null;
+    const items = [];
+    txt.split(/\r?\n/).forEach(line => {
+        line = line.trim();
+        if (!line) return;
+        // Сума може бути до або після назви; назва починається з першої літери
+        let num, name;
+        const m = line.match(/^([\d\s  .,₴]+)(.*)$/);
+        if (m) { num = m[1]; name = m[2]; }
+        else {
+            const m2 = line.match(/^(.*?)[\s\t]+([\d\s  .,₴]+)$/);
+            if (!m2) return;
+            name = m2[1]; num = m2[2];
+        }
+        const amount = parseMoney(num);
+        name = name.replace(/^[\t\s₴|;:-]+/, '').trim();
+        if (!(amount > 0)) return;
+        if (!name) { if (income === null) income = amount; return; }
+        items.push({ name, amount, ...guessCat(name), done: false });
+    });
+    if (!items.length && income === null) return alert('Не вдалось розпізнати жодного рядка. Формат: «3 000,00  кава» по одному на рядок.');
+    if (items.length) d.items = items;
+    if (income !== null) d.income = income;
+    document.getElementById('budPaste').value = '';
+    document.getElementById('budPasteBox').open = false;
+    renderBudget();
+    budTouch();
+}
+
+async function saveBudget() {
+    const d = budgetDraft();
+    const data = {
+        income: parseFloat(d.income) || 0,
+        who: d.who,
+        items: d.items
+            .filter(x => String(x.name).trim() || parseFloat(x.amount) > 0)
+            .map(x => ({ name: String(x.name).trim() || 'Без назви', amount: parseFloat(x.amount) || 0, cat: x.cat || '', sub: x.sub || '', done: !!x.done }))
+    };
+    const btn = document.getElementById('budSaveBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="loader"></span>';
+    await persistBudget(d.month, data);
+    btn.disabled = false;
+    s.bDraft = null;
+    renderBudget();
+    renderOverview();
+    if (window.navigator.vibrate) window.navigator.vibrate(15);
 }
 
 // --- РЕДАГУВАННЯ ЗАПИСУ ---
