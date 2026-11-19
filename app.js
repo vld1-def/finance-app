@@ -1218,6 +1218,7 @@ function renderTopCats(rows, prevRows) {
 
 /* ---------- Налаштування і категорії ---------- */
 function renderSettings() {
+  prefetchWidgets();
   const cnt = {};
   S.d.forEach(i => cnt[i.c] = (cnt[i.c] || 0) + 1);
   const cats = [...S.cats].sort((a, b) => (a.hidden ? 1 : 0) - (b.hidden ? 1 : 0) || (cnt[b.name] || 0) - (cnt[a.name] || 0));
@@ -1238,6 +1239,19 @@ function renderSettings() {
           <li>Обери <b>«На екран „Додому“»</b> → «Додати»</li></ol>
           <p class="hint" style="margin-top:8px">Після цього «Фінанси» відкриваються на весь екран, як звичайний додаток, і працюють навіть без інтернету — записи відправляться пізніше.</p>`
         : `<p class="small muted">Відкрий меню браузера → «Встановити додаток» / «Додати на головний екран».</p>`}
+    </div>
+    <div class="card">
+      <div class="card-h"><h3>Віджети на iPhone</h3></div>
+      <p class="hint">Через безкоштовний додаток <b>Scriptable</b>: віджет із бюджетом на екрані «Додому» і блокування, а «+» на ньому додає витрату, не відкриваючи сайт.</p>
+      <ol class="steps">
+        <li>Встанови <a class="link" href="https://apps.apple.com/app/scriptable/id1405459188" target="_blank" rel="noopener">Scriptable</a> з App Store</li>
+        <li>Натисни <b>«Копіювати віджет»</b> нижче → у Scriptable «+» → встав код → назви скрипт <b>Фінанси</b></li>
+        <li>Натисни <b>«Копіювати „+“»</b> → новий скрипт → встав → назви <b>Фінанси +</b> (саме так, із плюсом)</li>
+        <li>Затисни екран «Додому» → «+» → Scriptable → обери розмір → торкнись віджета → Script: <b>Фінанси</b></li>
+      </ol>
+      <div class="row-btns"><button onclick="copyWidget('finance-widget.js', this)">📋 Копіювати віджет</button><button onclick="copyWidget('finance-add.js', this)">📋 Копіювати «+»</button></div>
+      <p class="hint" style="margin-top:10px">Розміри: малий (тап — одразу додати витрату), середній (бюджет усіх гаманців + кнопка «+»), великий (ще топ категорій і останні записи). Для екрана блокування теж є. У полі <b>Parameter</b> віджета можна вписати «Влад» чи «Таня», щоб бачити лише своє і спільне.</p>
+      <p class="hint">Бонус: у додатку «Команди» створи команду з дією Scriptable «Run Script» → «Фінанси +» і назви її «Витрата» — тоді працюватиме «Сірі, витрата», кнопка «Дія» та подвійний тап по задній кришці.</p>
     </div>
     <div class="card">
       <div class="card-h"><h3>Категорії</h3><span class="tiny faint">натисни, щоб змінити</span></div>
@@ -1366,6 +1380,26 @@ async function toggleHidden(table, id, val) {
   const { error } = await sb.from(table).update({ hidden: val }).eq('id', id);
   if (error) return toast(error.message);
   await afterCatChange(val ? 'Приховано' : 'Показано');
+}
+
+// Код віджетів підтягуємо заздалегідь: Safari дозволяє копіювати лише одразу в момент тапу
+const widgetCode = {};
+function prefetchWidgets() {
+  ['finance-widget.js', 'finance-add.js'].forEach(f => {
+    if (!widgetCode[f]) fetch('widgets/' + f).then(r => r.ok ? r.text() : Promise.reject()).then(t => { widgetCode[f] = t; }).catch(() => {});
+  });
+}
+async function copyWidget(f, btn) {
+  const label = btn.textContent;
+  try {
+    if (widgetCode[f]) await navigator.clipboard.writeText(widgetCode[f]);
+    else await navigator.clipboard.write([new ClipboardItem({ 'text/plain': fetch('widgets/' + f).then(r => r.blob()) })]);
+    btn.textContent = '✓ Скопійовано';
+    toast('Скопійовано — встав у новий скрипт у Scriptable');
+  } catch (e) {
+    window.open('widgets/' + f, '_blank'); // запасний варіант: відкрити код і скопіювати вручну
+  }
+  setTimeout(() => { btn.textContent = label; }, 2500);
 }
 
 function exportCSV() {
