@@ -11,6 +11,8 @@ const USERS = ['Влад', 'Таня'];
 const UCOLOR = { 'Влад': '#60a5fa', 'Таня': '#f472b6' };
 const SHARED_COLOR = '#a78bfa';
 const MONTHS = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+const MONTHS_GEN = ['січня', 'лютого', 'березня', 'квітня', 'травня', 'червня', 'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня'];
+const MONTHS_LOC = ['січні', 'лютому', 'березні', 'квітні', 'травні', 'червні', 'липні', 'серпні', 'вересні', 'жовтні', 'листопаді', 'грудні'];
 const MONTHS_SHORT = ['січ', 'лют', 'бер', 'кві', 'трав', 'черв', 'лип', 'серп', 'вер', 'жовт', 'лист', 'груд'];
 const LS = { me: 'finMe', queue: 'finQueue', budgets: 'finBudgets', cache: 'finCache', noInstall: 'finNoInstall' };
 
@@ -33,7 +35,9 @@ const S = {
   edit: null,
   bud: { month: '', wallet: 'shared', draft: null, status: '' },
   catSheet: null,
+  sav: { goals: [], tx: [] }, savGoal: null,
 };
+const SAV_KEY = '_savings'; // накопичення живуть окремим рядком у таблиці budgets
 const charts = {};
 
 /* ---------- Хелпери ---------- */
@@ -141,7 +145,7 @@ function rebuild() {
   S.d = [...S.raw, ...S.queue].map(mapRow).sort((a, b) => b.ts - a.ts);
 }
 function saveCache() {
-  store.set(LS.cache, { cats: S.cats, subs: S.subs, raw: S.raw, budgets: S.budgets, budgetDb: S.budgetDb });
+  store.set(LS.cache, { cats: S.cats, subs: S.subs, raw: S.raw, budgets: S.budgets, budgetDb: S.budgetDb, sav: S.sav });
 }
 
 // Supabase за замовчуванням віддає максимум 1000 рядків — тягнемо сторінками
@@ -194,7 +198,10 @@ function loadData() {
       } else {
         S.budgetDb = true;
         S.budgets = {};
-        (b.data || []).forEach(r => { if (r.data) S.budgets[r.month] = r.data; });
+        (b.data || []).forEach(r => {
+          if (r.month === SAV_KEY) S.sav = normSav(r.data);
+          else if (r.data) S.budgets[r.month] = r.data;
+        });
       }
       saveCache();
       S.loadedAt = Date.now();
@@ -260,7 +267,7 @@ function go(tab) {
   $('scr-' + tab).scrollTop = 0;
 }
 function renderActive() {
-  ({ home: renderHome, history: renderHistory, analytics: renderAnalytics, budget: renderBudget, settings: renderSettings })[S.tab]();
+  ({ home: renderHome, history: renderHistory, analytics: renderAnalytics, budget: renderBudget, settings: renderSettings, savings: renderSavings })[S.tab]();
 }
 
 function monthBounds() {
@@ -329,6 +336,7 @@ function renderHome() {
       <div class="splitbar">${total ? USERS.map(u => `<i style="width:${tot[u] / total * 100}%;background:${UCOLOR[u]}"></i>`).join('') : ''}</div>
     </div>
     ${budgetHomeHTML(month)}
+    ${savingsHomeHTML()}
     <div class="card">
       <div class="card-h"><h3>Категорії${S.homeWho !== 'All' ? ' · ' + S.homeWho : ''}</h3></div>
       ${catList.length ? catList.map(([name, v], i) => {
@@ -397,12 +405,12 @@ function normBudget(raw) {
 }
 const budgetOf = m => normBudget(S.budgets[m]);
 const allItems = b => [...b.shared.items, ...USERS.flatMap(u => b.people[u].items)];
-const itemFilled = it => String(it.name || '').trim() || num(it.amount) > 0 || it.cat;
+const itemFilled = it => String(it.name || '').trim() || num(it.amount) > 0 || it.cat || it.goal;
 const budgetEmpty = b => !b || (!allItems(b).some(itemFilled) && !USERS.some(u => num(b.people[u].income) > 0));
 function cleanBudget(d) {
   const ci = items => items.filter(itemFilled).map(x => ({
-    name: String(x.name || '').trim() || catParts(x.cat).t || 'Без назви',
-    amount: num(x.amount), cat: x.cat || '', sub: x.sub || '', done: !!x.done,
+    name: String(x.name || '').trim() || (x.goal ? goalName(x.goal) : catParts(x.cat).t) || 'Без назви',
+    amount: num(x.amount), cat: x.cat || '', sub: x.sub || '', done: !!x.done, ...(x.goal ? { goal: x.goal } : {}),
   }));
   const b = { v: 2, shared: { items: ci(d.shared.items), split: { ...d.shared.split } }, people: {} };
   USERS.forEach(u => b.people[u] = { income: num(d.people[u].income), items: ci(d.people[u].items) });
@@ -438,12 +446,15 @@ function budgetReport(b, month) {
   const daysLeft = isCur ? dim - new Date().getDate() + 1 : month > cm ? dim : 0;
   const pace = isCur ? new Date().getDate() / dim : month < cm ? 1 : 0;
 
+  // Відкладене на ціль за місяць (спільне — від обох, особисте — лише від цієї людини)
+  const saved = (goal, key) => sum(S.sav.tx.filter(t => t.goal === goal && t.amount > 0 && t.date.slice(0, 7) === month && (key === 'shared' || t.who === key)), t => t.amount);
   const wallet = (key, name, color, items, spentArr, outside) => {
-    const its = items.map((it, k) => ({ ...it, amount: num(it.amount), spent: it.cat ? spentArr[k] : null }));
+    const its = items.map((it, k) => ({ ...it, amount: num(it.amount), spent: it.goal ? saved(it.goal, key) : it.cat ? spentArr[k] : null }));
     const planned = sum(its, x => x.amount);
-    const spent = outside + sum(its, x => x.cat ? x.spent : (x.done ? x.amount : 0));
+    const spent = outside + sum(its, x => x.cat || x.goal ? x.spent : (x.done ? x.amount : 0));
     const flexLeft = sum(its.filter(x => x.cat), x => x.amount - x.spent) - outside;
-    return { key, name, color, items: its, planned, spent, outside, left: planned - spent,
+    const savedPlan = sum(its.filter(x => x.goal), x => x.amount), savedNow = sum(its.filter(x => x.goal), x => x.spent);
+    return { key, name, color, items: its, planned, spent, outside, left: planned - spent, savedPlan, savedNow,
       perDay: daysLeft ? Math.max(0, flexLeft) / daysLeft : 0,
       over: its.filter(x => x.cat && x.amount > 0 && x.spent > x.amount) };
   };
@@ -508,10 +519,17 @@ function budItems(d = budDraft()) { return S.bud.wallet === 'shared' ? d.shared.
 function budStep(dir) { flushBudgetSave(); S.bud.month = shiftMonth(S.bud.month || defaultBudgetMonth(), dir); S.bud.draft = null; renderBudget(); }
 function budWallet(k) { S.bud.wallet = k; renderBudget(); }
 
-function catOptions(sel, emptyLabel = '— без категорії —') {
+function catOptions(sel, emptyLabel = '— без категорії —', goal) {
   const names = S.cats.filter(c => !c.hidden || c.name === sel).map(c => c.name);
   if (sel && !names.includes(sel)) names.unshift(sel);
-  return `<option value="">${emptyLabel}</option>` + names.map(n => `<option value="${esc(n)}" ${n === sel ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  let html = `<option value="">${emptyLabel}</option>` + names.map(n => `<option value="${esc(n)}" ${n === sel && !goal ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  // У бюджеті стаття може бути «відкласти на ціль»
+  if (goal !== undefined) {
+    const gs = S.sav.goals.filter(g => !g.archived || g.id === goal);
+    html += `<optgroup label="💰 Відкласти на ціль">${gs.map(g => `<option value="goal:${g.id}" ${g.id === goal ? 'selected' : ''}>${esc(g.emoji + ' ' + g.name)}</option>`).join('')}
+      <option value="goal:new">＋ Нова ціль…</option></optgroup>`;
+  }
+  return html;
 }
 function subOptions(cat, sel, emptyLabel = 'вся категорія') {
   const list = S.subs.filter(x => x.category === cat && (!x.hidden || x.name === sel)).map(x => x.name);
@@ -529,7 +547,7 @@ function renderBudget() {
   const u0 = USERS[0], u1 = USERS[1];
 
   $('scr-budget').innerHTML = `
-    <header class="top"><h1>Бюджет</h1><span class="bud-status" id="budStatus">${esc(S.bud.status)}</span></header>
+    <header class="top"><h1>Бюджет</h1><div class="top-r"><span class="bud-status" id="budStatus">${esc(S.bud.status)}</span><button class="btn" onclick="go('savings')">💰 Накопичення</button></div></header>
     ${!S.budgetDb ? `<div class="banner"><span>Бюджет зараз зберігається лише на цьому пристрої — таблиця budgets у базі недоступна.</span></div>` : ''}
     ${monthNavHTML(m, 'budStep')}
     <div class="card">
@@ -572,19 +590,24 @@ function outsideList(R, u) {
 function budItemHTML(it, i, rep, started) {
   const subs = subOptions(it.cat, it.sub);
   let prog = '';
-  if (it.cat && started && rep) {
+  if (it.goal && started && rep) {
+    // Відкладання: «недобір» — погано, «більше плану» — добре
+    const a = num(it.amount), p = a ? rep.spent / a * 100 : 0;
+    prog = `<div class="bi-p"><div class="bar"><i style="width:${Math.min(100, p)}%;background:var(--good)"></i></div>
+      <p><span>відкладено ${money(rep.spent)}</span><span>${rep.spent >= a ? '✓ виконано' : 'ще ' + money(a - rep.spent)}</span></p></div>`;
+  } else if (it.cat && started && rep) {
     const a = num(it.amount), p = a ? rep.spent / a * 100 : (rep.spent ? 100 : 0);
     const col = p > 100 ? 'var(--bad)' : p >= 85 ? 'var(--warn)' : 'var(--good)';
     prog = `<div class="bi-p"><div class="bar"><i style="width:${Math.min(100, p)}%;background:${col}"></i></div>
       <p><span>витрачено ${money(rep.spent)}</span><span class="${a - rep.spent < 0 ? 'bad' : ''}">${a - rep.spent < 0 ? 'перевищено на ' + money(rep.spent - a) : 'лишилось ' + money(a - rep.spent)}</span></p></div>`;
   }
   return `<div class="bi" data-i="${i}">
-    <div class="bi-r1">${it.cat ? '' : `<button class="chk ${it.done ? 'on' : ''}" data-act="done" aria-label="Сплачено">✓</button>`}
-      <input class="inp" data-f="name" value="${esc(it.name)}" placeholder="${it.cat ? esc(catParts(it.cat).t) : 'Назва (оренда, кредит…)'}">
+    <div class="bi-r1">${it.cat || it.goal ? '' : `<button class="chk ${it.done ? 'on' : ''}" data-act="done" aria-label="Сплачено">✓</button>`}
+      <input class="inp" data-f="name" value="${esc(it.name)}" placeholder="${it.goal ? esc(goalName(it.goal)) : it.cat ? esc(catParts(it.cat).t) : 'Назва (оренда, кредит…)'}">
       <input class="inp amt num" data-f="amount" inputmode="decimal" value="${it.amount === 0 ? '' : esc(it.amount)}" placeholder="0">
       <button class="x" data-act="del" aria-label="Видалити статтю">✕</button></div>
-    <div class="bi-r2"><select class="sel" data-f="cat">${catOptions(it.cat)}</select>
-      <select class="sel" data-f="sub" ${subs.n ? '' : 'disabled'}>${subs.html}</select></div>
+    <div class="bi-r2"><select class="sel" data-f="cat">${catOptions(it.cat, undefined, it.goal || "")}</select>
+      <select class="sel" data-f="sub" ${subs.n && !it.goal ? '' : 'disabled'}>${it.goal ? '<option>накопичення</option>' : subs.html}</select></div>
     ${prog}</div>`;
 }
 
@@ -599,6 +622,7 @@ function renderBudSummary() {
   if (box) box.innerHTML = R.people.map(p => `<div><div class="ppl-r"><b style="color:var(--text)">${p.u}</b>
       <b class="${p.free < 0 ? 'bad' : 'good'}">${p.free < 0 ? 'бракує ' + money(-p.free) : 'вільно ' + money(p.free)}</b></div>
       <div class="tiny faint">${money(p.income)} дохід − ${money(p.contrib)} у спільне − ${money(p.own)} особисте</div></div>`).join('')
+    + (sum(R.wallets, w => w.savedPlan) ? `<div class="ppl-r"><span>💰 З них відкласти</span><b class="good">${money(sum(R.wallets, w => w.savedPlan))}</b></div>` : '')
     + `<div class="ppl-r"><span>Разом заплановано</span><b>${money(sum(R.wallets, w => w.planned))}</b></div>`;
   R.wallets.forEach(w => { const el = $('wsum-' + w.key); if (el) el.textContent = money(w.planned); });
 }
@@ -648,7 +672,15 @@ function onBudChange(e) {
   const t = e.target, row = t.closest('.bi');
   if (!row || (t.dataset.f !== 'cat' && t.dataset.f !== 'sub')) return;
   const it = budItems()[+row.dataset.i];
-  const autoName = !it.name || it.name === catParts(it.cat).t || it.name === it.sub;
+  const autoName = !it.name || it.name === catParts(it.cat).t || it.name === it.sub || (it.goal && it.name === goalName(it.goal));
+  if (t.dataset.f === 'cat' && t.value.startsWith('goal:')) {
+    const id = t.value.slice(5);
+    if (id === 'new') { createGoal().then(g => { if (g) { it.goal = g.id; it.cat = ''; it.sub = ''; if (autoName) it.name = g.name; } budChanged(true); }); return; }
+    it.goal = id; it.cat = ''; it.sub = '';
+    if (autoName) it.name = goalName(id);
+    return budChanged(true);
+  }
+  if (t.dataset.f === 'cat') delete it.goal;
   it[t.dataset.f] = t.value;
   if (t.dataset.f === 'cat') it.sub = '';
   if (autoName) it.name = it.sub || (it.cat ? catParts(it.cat).t : '');
@@ -753,6 +785,211 @@ function budImport() {
   if (income !== null) d.people[w === 'shared' ? USERS[0] : w].income = income;
   budChanged(true);
   toast(`Додано ${parsed.length} статей`);
+}
+
+/* ---------- Накопичення ----------
+   Рядок budgets.month = '_savings', data = { goals: [...], tx: [...] }
+   goal: { id, name, emoji, target, owner: 'shared'|'Влад'|'Таня', deadline: 'YYYY-MM'|'', archived }
+   tx:   { id, goal, amount (+ відклали, − зняли), who, date: ISO, note }
+   Відкладені гроші — не витрати: в аналітику і категорії не потрапляють. */
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+function normSav(d) { return { goals: (d && d.goals) || [], tx: (d && d.tx) || [] }; }
+const goalById = id => S.sav.goals.find(g => g.id === id);
+const goalName = id => { const g = goalById(id); return g ? g.name : 'Ціль'; };
+const goalBalance = id => sum(S.sav.tx.filter(t => t.goal === id), t => t.amount);
+const ownerName = o => o === 'shared' ? 'Спільне' : o;
+const ownerColor = o => o === 'shared' ? SHARED_COLOR : UCOLOR[o];
+function monthsUntil(ym) { if (!ym) return 0; const [y, m] = ym.split('-').map(Number); const n = new Date(); return (y - n.getFullYear()) * 12 + (m - 1 - n.getMonth()) + 1; }
+
+// Запис: беремо свіжу версію з бази, застосовуємо зміну, зберігаємо (щоб два телефони не затирали одне одного)
+async function saveSav(mutate) {
+  let cur = normSav(JSON.parse(JSON.stringify(S.sav)));
+  if (sb && S.budgetDb) {
+    const { data, error } = await sb.from('budgets').select('data').eq('month', SAV_KEY);
+    if (!error && data && data[0]) cur = normSav(data[0].data);
+  }
+  mutate(cur);
+  S.sav = cur; saveCache();
+  if (sb && S.budgetDb) {
+    const { error } = await sb.from('budgets').upsert({ month: SAV_KEY, data: cur, updated_at: new Date().toISOString() });
+    if (error) { toast(isNetErr(error) ? 'Немає інтернету — збережено лише на цьому телефоні' : 'Помилка: ' + error.message); return false; }
+  }
+  return true;
+}
+
+function savingsHomeHTML() {
+  const gs = S.sav.goals.filter(g => !g.archived);
+  if (!gs.length) return `<div class="card cta" onclick="go('savings')"><span>💰 Відкладай гроші на цілі: подушка, відпустка, техніка…</span><b>Почати →</b></div>`;
+  const total = sum(gs, g => goalBalance(g.id));
+  const m = curMonth();
+  const month = sum(S.sav.tx.filter(t => t.date.slice(0, 7) === m), t => t.amount);
+  return `<div class="card" onclick="go('savings')" style="cursor:pointer">
+    <div class="card-h"><h3>💰 Накопичення</h3><span class="link">Відкрити →</span></div>
+    <div class="wal-h"><span class="wal-n" style="font-size:22px">${money(total)}</span><span class="wal-v">цього місяця <b class="${month >= 0 ? 'good' : 'bad'}">${month >= 0 ? '+' : '−'}${money(Math.abs(month))}</b></span></div>
+    ${gs.slice(0, 3).map(g => { const b = goalBalance(g.id); return `<div class="wal"><div class="wal-h"><span class="small">${esc(g.emoji)} ${esc(g.name)}</span><span class="wal-v"><b>${money(b)}</b>${g.target ? ' / ' + money(g.target) : ''}</span></div>
+      ${g.target ? `<div class="bar"><i style="width:${Math.min(100, b / g.target * 100)}%;background:var(--good)"></i></div>` : ''}</div>`; }).join('')}
+  </div>`;
+}
+
+function renderSavings() {
+  const gs = S.sav.goals.filter(g => !g.archived);
+  const arch = S.sav.goals.filter(g => g.archived);
+  const total = sum(gs, g => goalBalance(g.id));
+  const m = curMonth();
+  const monthIn = sum(S.sav.tx.filter(t => t.date.slice(0, 7) === m && t.amount > 0), t => t.amount);
+  const b = budgetOf(m);
+  const plan = b && !budgetEmpty(b) ? sum(budgetReport(b, m).wallets, w => w.savedPlan) : 0;
+  const byOwner = {};
+  gs.forEach(g => byOwner[g.owner] = (byOwner[g.owner] || 0) + goalBalance(g.id));
+  const recent = [...S.sav.tx].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 12);
+
+  $('scr-savings').innerHTML = `
+    <header class="top"><div style="display:flex;align-items:center;gap:10px"><button class="icon-btn" onclick="go('budget')" aria-label="Назад">‹</button><h1>Накопичення</h1></div><div class="top-r">${syncHTML()}</div></header>
+    <div class="card hero">
+      <div class="label">Відкладено всього</div>
+      <div class="big num">${money(total)}</div>
+      <div class="sub">У ${MONTHS_LOC[+m.slice(5) - 1]} відкладено ${money(monthIn)}${plan ? ` з ${money(plan)} за планом` : ''}</div>
+      ${plan ? `<div class="bar"><i style="width:${Math.min(100, monthIn / plan * 100)}%;background:var(--good)"></i></div>` : ''}
+      ${Object.keys(byOwner).length > 1 ? `<div class="who-split" style="margin-top:12px;grid-template-columns:repeat(${Object.keys(byOwner).length},1fr)">${Object.entries(byOwner).map(([o, v]) => `<div class="who-b" style="--c:${ownerColor(o)}"><span class="n"><i></i>${esc(ownerName(o))}</span><b>${money(v)}</b></div>`).join('')}</div>` : ''}
+    </div>
+    ${gs.map(goalCardHTML).join('')}
+    <button class="btn-primary" onclick="createGoal().then(g => g && renderSavings())">＋ Нова ціль</button>
+    <p class="hint" style="margin:10px 4px 16px">Щоб відкладання було в плані місяця, додай у Бюджеті статтю й обери в категорії «💰 Відкласти на ціль» — прогрес рахуватиметься сам. Відкладені гроші не вважаються витратами.</p>
+    ${recent.length ? `<div class="card"><div class="card-h"><h3>Останні операції</h3></div>${recent.map(savTxHTML).join('')}</div>` : ''}
+    ${arch.length ? `<div class="card"><div class="card-h"><h3>Архів</h3></div>${arch.map(g => `<div class="set-row off" onclick="openGoal('${g.id}')"><div class="cat-e">${esc(g.emoji)}</div><div class="cat-m"><div class="cat-t">${esc(g.name)}</div><small>${money(goalBalance(g.id))}</small></div><span class="chev">›</span></div>`).join('')}</div>` : ''}`;
+}
+
+function goalCardHTML(g) {
+  const bal = goalBalance(g.id);
+  const pct = g.target ? Math.min(100, bal / g.target * 100) : 0;
+  const left = g.target ? Math.max(0, g.target - bal) : 0;
+  const mLeft = monthsUntil(g.deadline);
+  let foot = '';
+  if (g.target && bal >= g.target) foot = '<span class="good">🎉 Ціль досягнуто!</span>';
+  else if (g.target) foot = `<span>лишилось ${money(left)}</span>` + (g.deadline ? (mLeft > 0 ? `<span>≈ ${money(left / mLeft)}/міс до ${MONTHS_GEN[+g.deadline.slice(5) - 1]} ${g.deadline.slice(0, 4)}</span>` : '<span class="bad">термін минув</span>') : '');
+  return `<div class="card">
+    <div class="cat-row-h" onclick="openGoal('${g.id}')" style="cursor:pointer">
+      <div class="cat-e">${esc(g.emoji)}</div>
+      <div class="cat-m"><div class="cat-t">${esc(g.name)}</div><div class="tiny" style="color:${ownerColor(g.owner)}">● ${esc(ownerName(g.owner))}</div></div>
+      <div class="cat-v">${money(bal)}${g.target ? `<small>з ${money(g.target)} · ${Math.round(pct)}%</small>` : ''}</div>
+    </div>
+    ${g.target ? `<div class="bar" style="margin-top:10px"><i style="width:${pct}%;background:var(--good)"></i></div>` : ''}
+    ${foot ? `<div class="wal-f">${foot}</div>` : ''}
+    <div class="row-btns"><button onclick="savMove('${g.id}', 1)">＋ Відкласти</button><button onclick="savMove('${g.id}', -1)">− Зняти</button></div>
+  </div>`;
+}
+
+function savTxHTML(t) {
+  const g = goalById(t.goal);
+  const d = new Date(t.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' });
+  return `<div class="tx" onclick="openGoal('${t.goal}')">
+    <div class="tx-ic" style="--c:${UCOLOR[t.who] || '#888'}">${esc(g ? g.emoji : '💰')}</div>
+    <div class="tx-m"><div class="tx-t">${esc(g ? g.name : 'Ціль')}</div><div class="tx-s">${esc(t.who)} · ${d}${t.note ? ' · ' + esc(t.note) : ''}</div></div>
+    <div class="tx-a ${t.amount > 0 ? 'good' : 'bad'}">${t.amount > 0 ? '+' : '−'}${money(Math.abs(t.amount))}</div></div>`;
+}
+
+// Діалог внеску / зняття
+function savMove(goalId, sign) {
+  const g = goalById(goalId); if (!g) return;
+  let who = g.owner !== 'shared' ? g.owner : (S.me || USERS[0]);
+  const bal = goalBalance(goalId);
+  const box = $('dlgBox');
+  const draw = () => {
+    box.innerHTML = `<h3>${sign > 0 ? '＋ Відкласти' : '− Зняти'} · ${esc(g.emoji)} ${esc(g.name)}</h3>
+      <p>Зараз на цілі ${money(bal)}</p>
+      <div class="seg" style="margin-bottom:12px">${USERS.map(u => `<button class="${who === u ? 'on' : ''}" data-who="${u}">${u}</button>`).join('')}</div>
+      <input class="inp num" id="savAmt" inputmode="decimal" placeholder="Сума, ₴" autocomplete="off">
+      <input class="inp" id="savNote" placeholder="${sign > 0 ? 'Коментар (зарплата, кешбек…)' : 'На що зняли?'}" autocomplete="off">
+      <div class="row-btns"><button id="dlgNo">Скасувати</button><button id="dlgOk" style="background:var(--text);color:#000">${sign > 0 ? 'Відкласти' : 'Зняти'}</button></div>`;
+    box.querySelectorAll('[data-who]').forEach(b => b.onclick = () => { who = b.dataset.who; const a = $('savAmt').value, n = $('savNote').value; draw(); $('savAmt').value = a; $('savNote').value = n; });
+    $('dlgNo').onclick = () => $('dlg').classList.remove('open');
+    $('dlgOk').onclick = submit;
+    $('savAmt').onkeydown = e => { if (e.key === 'Enter') submit(); };
+  };
+  const submit = async () => {
+    const a = parseMoney($('savAmt').value);
+    if (!(a > 0)) { $('savAmt').focus(); return; }
+    if (sign < 0 && a > bal && !await confirmDlg('Зняти більше, ніж є?', `На цілі лише ${money(bal)}.`, 'Так, зняти')) return;
+    const tx = { id: newId(), goal: goalId, amount: sign * Math.round(a * 100) / 100, who, date: new Date().toISOString(), note: $('savNote') ? $('savNote').value.trim() : '' };
+    $('dlg').classList.remove('open');
+    await saveSav(d => d.tx.push(tx));
+    vibrate(); renderActive();
+    if (g.target && sign > 0 && bal < g.target && bal + a >= g.target) toast(`🎉 Ціль «${g.name}» досягнуто!`);
+    else toast(sign > 0 ? `💰 Відкладено ${money(a)}` : `Знято ${money(a)}`, { label: 'Скасувати', fn: async () => { await saveSav(d => { d.tx = d.tx.filter(x => x.id !== tx.id); }); renderActive(); toast('Скасовано'); } });
+  };
+  draw();
+  $('dlg').classList.add('open');
+  $('savAmt').focus();
+}
+
+// Діалог створення / редагування цілі. Повертає ціль або null.
+function createGoal(existing) {
+  return new Promise(resolve => {
+    const g = existing ? { ...existing } : { id: newId(), name: '', emoji: '💰', target: '', owner: 'shared', deadline: '', archived: false };
+    const box = $('dlgBox');
+    const EMO = ['💰', '🛟', '🏖', '✈️', '🏠', '🚗', '💻', '🎁', '🎓', '💍', '🩺', '📱'];
+    const draw = () => {
+      box.innerHTML = `<h3>${existing ? 'Змінити ціль' : 'Нова ціль'}</h3>
+        <div class="chips wrap" style="margin-bottom:10px">${EMO.map(e => `<button class="chip ${g.emoji === e ? 'on' : ''}" data-emo="${e}">${e}</button>`).join('')}</div>
+        <input class="inp" id="gName" placeholder="Назва: подушка безпеки, відпустка…" value="${esc(g.name)}" autocomplete="off">
+        <input class="inp num" id="gTarget" inputmode="decimal" placeholder="Скільки треба, ₴ (не обовʼязково)" value="${g.target || ''}" autocomplete="off">
+        <p style="margin:0 0 6px">Чия ціль</p>
+        <div class="seg" style="margin-bottom:12px">${['shared', ...USERS].map(o => `<button class="${g.owner === o ? 'on' : ''}" data-own="${o}">${ownerName(o)}</button>`).join('')}</div>
+        <p style="margin:0 0 6px">До якого місяця (не обовʼязково)</p>
+        <input class="inp" id="gDeadline" type="month" value="${g.deadline || ''}">
+        <div class="row-btns"><button id="dlgNo">Скасувати</button><button id="dlgOk" style="background:var(--text);color:#000">${existing ? 'Зберегти' : 'Створити'}</button></div>`;
+      const keep = () => { g.name = $('gName').value; g.target = $('gTarget').value; g.deadline = $('gDeadline').value; };
+      box.querySelectorAll('[data-emo]').forEach(b => b.onclick = () => { keep(); g.emoji = b.dataset.emo; draw(); });
+      box.querySelectorAll('[data-own]').forEach(b => b.onclick = () => { keep(); g.owner = b.dataset.own; draw(); });
+      $('dlgNo').onclick = () => { $('dlg').classList.remove('open'); resolve(null); };
+      $('dlgOk').onclick = async () => {
+        keep();
+        g.name = g.name.trim();
+        if (!g.name) { $('gName').focus(); return; }
+        g.target = parseMoney(g.target) > 0 ? Math.round(parseMoney(g.target)) : 0;
+        $('dlg').classList.remove('open');
+        await saveSav(d => { const i = d.goals.findIndex(x => x.id === g.id); if (i >= 0) d.goals[i] = g; else d.goals.push(g); });
+        resolve(g);
+      };
+    };
+    draw();
+    $('dlg').classList.add('open');
+    if (!existing) $('gName').focus();
+  });
+}
+
+function openGoal(id) { S.savGoal = id; renderGoalSheet(); $('sheet-cat').classList.add('open'); }
+function renderGoalSheet() {
+  const g = goalById(S.savGoal);
+  if (!g) { closeSheet('sheet-cat'); return; }
+  const tx = S.sav.tx.filter(t => t.goal === g.id).sort((a, b) => b.date.localeCompare(a.date));
+  const inSum = sum(tx.filter(t => t.amount > 0), t => t.amount), outSum = -sum(tx.filter(t => t.amount < 0), t => t.amount);
+  $('catTitle').textContent = g.emoji + ' ' + g.name;
+  $('catBody').innerHTML = `
+    <div class="center"><div class="big num" style="font-size:36px;font-weight:800">${money(goalBalance(g.id))}</div>
+      <p class="muted small" style="margin:2px 0 12px">${g.target ? `ціль ${money(g.target)} · ` : ''}відкладено ${money(inSum)}${outSum ? ` · знято ${money(outSum)}` : ''}</p></div>
+    <div class="row-btns"><button onclick="savMove('${g.id}', 1)">＋ Відкласти</button><button onclick="savMove('${g.id}', -1)">− Зняти</button></div>
+    <p class="sec-t">Історія</p>
+    ${tx.length ? tx.map(t => `<div class="sub-r"><span class="nm">${new Date(t.date).toLocaleDateString('uk-UA', { day: 'numeric', month: 'short', year: '2-digit' })} · ${esc(t.who)}${t.note ? `<small>${esc(t.note)}</small>` : ''}</span>
+      <b class="${t.amount > 0 ? 'good' : 'bad'} num">${t.amount > 0 ? '+' : '−'}${money(Math.abs(t.amount))}</b>
+      <button onclick="delSavTx('${t.id}')" aria-label="Видалити операцію" style="color:var(--bad)">✕</button></div>`).join('') : '<p class="muted small">Ще нічого не відкладено</p>'}
+    <div class="row-btns" style="margin-top:18px"><button onclick="editGoal()">✎ Змінити</button>
+      <button onclick="archiveGoal()">${g.archived ? '↩︎ З архіву' : '🗄 В архів'}</button>
+      ${tx.length ? '' : `<button style="color:var(--bad)" onclick="deleteGoal()">Видалити</button>`}</div>
+    <p class="hint" style="margin-top:8px">Ціль з історією можна лише архівувати — щоб не загубити, скільки на неї відкладали.</p>`;
+}
+async function editGoal() { const g = await createGoal(goalById(S.savGoal)); if (g) { renderGoalSheet(); renderActive(); } }
+async function archiveGoal() { const id = S.savGoal; await saveSav(d => { const g = d.goals.find(x => x.id === id); if (g) g.archived = !g.archived; }); renderGoalSheet(); renderActive(); }
+async function deleteGoal() {
+  const id = S.savGoal;
+  if (!await confirmDlg('Видалити ціль?', '', 'Видалити', true)) return;
+  await saveSav(d => { d.goals = d.goals.filter(x => x.id !== id); });
+  closeSheet('sheet-cat'); renderActive();
+}
+async function delSavTx(txId) {
+  if (!await confirmDlg('Видалити операцію?', 'Баланс цілі перерахується.', 'Видалити', true)) return;
+  await saveSav(d => { d.tx = d.tx.filter(x => x.id !== txId); });
+  renderGoalSheet(); renderActive();
 }
 
 /* ---------- Швидке додавання ---------- */
@@ -1250,7 +1487,8 @@ function renderSettings() {
         <li>Затисни екран «Додому» → «+» → Scriptable → обери розмір → торкнись віджета → Script: <b>Фінанси</b></li>
       </ol>
       <div class="row-btns"><button onclick="copyWidget('finance-widget.js', this)">📋 Копіювати віджет</button><button onclick="copyWidget('finance-add.js', this)">📋 Копіювати «+»</button></div>
-      <p class="hint" style="margin-top:10px">Розміри: малий (тап — одразу додати витрату), середній (бюджет усіх гаманців + кнопка «+»), великий (ще топ категорій і останні записи). Для екрана блокування теж є. У полі <b>Parameter</b> віджета можна вписати «Влад» чи «Таня», щоб бачити лише своє і спільне.</p>
+      <p class="hint" style="margin-top:10px">Тап по віджету відкриває цей додаток на весь екран; після закриття віджет одразу оновлюється. Кнопка «+» на середньому і великому віджеті додає витрату за 3 тапи, без відкриття сайту. Якщо внести витрату звідси, тапнувши по віджету, або через «+», віджет оновиться за кілька секунд; з Safari чи з іконки на «Додому» — протягом ~5–15 хв.</p>
+      <p class="hint">Розміри: малий, середній (бюджет усіх гаманців + «+»), великий (ще топ категорій і останні записи), а також для екрана блокування. У полі <b>Parameter</b> віджета можна вписати «Влад» чи «Таня», щоб бачити лише своє і спільне.</p>
       <p class="hint">Бонус: у додатку «Команди» створи команду з дією Scriptable «Run Script» → «Фінанси +» і назви її «Витрата» — тоді працюватиме «Сірі, витрата», кнопка «Дія» та подвійний тап по задній кришці.</p>
     </div>
     <div class="card">
@@ -1420,6 +1658,7 @@ function boot() {
   if (cache) {
     S.cats = cache.cats || []; S.subs = cache.subs || []; S.raw = cache.raw || [];
     S.budgets = cache.budgets || {}; S.budgetDb = cache.budgetDb !== false;
+    S.sav = normSav(cache.sav);
   }
   S.queue = store.get(LS.queue, []);
   S.mF = curMonth();
@@ -1446,7 +1685,10 @@ function boot() {
   openWho(false);
 
   const p = new URLSearchParams(location.search);
-  if (p.has('add')) { history.replaceState(null, '', location.pathname); openAdd(); }
+  // Відкрито з віджета Scriptable — це вже «додаток», банер установки не потрібен
+  if (p.get('in') === 'scriptable') { store.set(LS.noInstall, true); renderActive(); }
+  if (p.has('add') || p.has('in')) history.replaceState(null, '', location.pathname);
+  if (p.has('add')) openAdd();
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }

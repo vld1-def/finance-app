@@ -6,7 +6,8 @@
 const SUPABASE_URL = 'https://xezhbqcteaihrlrykbkr.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_qNcUyFxMlWAWAry3uSHndg_ADVMCE3a';
 const APP_URL = 'https://vld1-def.github.io/finance-app/';
-const ADD_SCRIPT = 'Фінанси +'; // назва скрипта швидкого додавання в Scriptable
+const WIDGET_SCRIPT = 'Фінанси';  // назва ЦЬОГО скрипта в Scriptable
+const ADD_SCRIPT = 'Фінанси +';   // назва скрипта швидкого додавання
 
 const USERS = ['Влад', 'Таня'];
 const UCOLOR = { 'Влад': '#60a5fa', 'Таня': '#f472b6' };
@@ -19,6 +20,9 @@ const short = v => v >= 10000 ? '₴' + Math.round(v / 1000) + 'к' : money(v);
 const num = v => { const n = parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; };
 const sum = (a, f = x => x) => a.reduce((t, x) => t + (f(x) || 0), 0);
 const addRun = 'scriptable:///run/' + encodeURIComponent(ADD_SCRIPT);
+// Тап по віджету відкриває сайт на весь екран усередині Scriptable.
+// (iOS не дає іншим додаткам відкривати збережений на «Додому» сайт — лише Safari.)
+const openRun = 'scriptable:///run/' + encodeURIComponent(WIDGET_SCRIPT) + '?open=1';
 
 /* ---------- Дані ---------- */
 async function api(path) {
@@ -57,9 +61,10 @@ async function loadData() {
     try { await flushQueue(); } catch (e) {}
     const [rows, budgets] = await Promise.all([
       api(`expenses?select=who,categoria,subcategory,sum,date,comm&date=gte.${encodeURIComponent(from)}&date=lt.${encodeURIComponent(to)}&order=date.desc&limit=2000`),
-      api(`budgets?select=month,data&month=eq.${month}`),
+      api(`budgets?select=month,data&month=in.(${month},_savings)`),
     ]);
-    const data = { month, rows, budget: budgets[0] ? budgets[0].data : null, at: Date.now() };
+    const bm = budgets.find(b => b.month === month), sv = budgets.find(b => b.month === '_savings');
+    const data = { month, rows, budget: bm ? bm.data : null, savings: sv ? sv.data : null, at: Date.now() };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
   } catch (e) {
@@ -119,9 +124,12 @@ function report(data) {
     k = bestIdx(b.people[e.u].items, e);
     if (k >= 0) pp[e.u].spent[k] += e.a; else pp[e.u].outside += e.a;
   });
+  // Статті «відкласти на ціль»: виконання = відкладене на цю ціль за місяць
+  const svTx = (data.savings && data.savings.tx) || [];
+  const saved = (goal, key) => sum(svTx.filter(t => t.goal === goal && t.amount > 0 && String(t.date).slice(0, 7) === data.month && (key === 'shared' || t.who === key)), t => t.amount);
   const wallet = (key, name, color, items, spentArr, outside) => {
     const planned = sum(items, x => num(x.amount));
-    const spent = outside + sum(items.map((x, k) => x.cat ? spentArr[k] : (x.done ? num(x.amount) : 0)));
+    const spent = outside + sum(items.map((x, k) => x.goal ? saved(x.goal, key) : x.cat ? spentArr[k] : (x.done ? num(x.amount) : 0)));
     const flexLeft = sum(items.map((x, k) => x.cat ? num(x.amount) - spentArr[k] : 0)) - outside;
     return { key, name, color, planned, spent, left: planned - spent, perDay: Math.max(0, flexLeft) / daysLeft };
   };
@@ -196,8 +204,8 @@ function build(data, family, who) {
   const perDay = sum(ws, w => w.perDay);
 
   const w = new ListWidget();
-  w.url = APP_URL;
-  w.refreshAfterDate = new Date(Date.now() + 15 * 60000);
+  w.url = openRun;
+  w.refreshAfterDate = new Date(Date.now() + 5 * 60000);
 
   // --- Екран блокування ---
   if (family === 'accessoryInline') {
@@ -209,14 +217,12 @@ function build(data, family, who) {
     const p = planned ? Math.round(wSpent / planned * 100) : null;
     const t1 = w.addText(p != null ? p + '%' : short(spent)); t1.font = Font.boldSystemFont(p != null ? 16 : 12); t1.centerAlignText(); t1.minimumScaleFactor = 0.5;
     const t2 = w.addText(p != null ? 'бюджет' : 'місяць'); t2.font = Font.systemFont(9); t2.centerAlignText();
-    w.url = addRun;
     return w;
   }
   if (family === 'accessoryRectangular') {
     const t0 = w.addText(planned ? `🎯 лишилось ${money(left)}` : `💸 ${money(spent)}`); t0.font = Font.boldSystemFont(14); t0.minimumScaleFactor = 0.6;
     const t1 = w.addText(planned ? `≈ ${money(perDay)} на день` : `сьогодні ${money(R.today)}`); t1.font = Font.systemFont(12);
     const t2 = w.addText(planned ? `витрачено ${money(wSpent)} з ${money(planned)}` : MONTHS[now.getMonth()]); t2.font = Font.systemFont(11); t2.textOpacity = 0.7; t2.minimumScaleFactor = 0.6;
-    w.url = addRun;
     return w;
   }
 
@@ -242,9 +248,8 @@ function build(data, family, who) {
       const img = w.addImage(bar(120, wSpent / planned, walletColor({ planned, spent: wSpent }, R.pace), R.pace)); img.imageSize = new Size(120, 10);
       txt(w, `≈ ${short(perDay)} на день`, 10, C.faint, 'regular');
     } else {
-      txt(w, '+ додати витрату', 12, new Color('#a78bfa'), 'bold');
+      txt(w, 'бюджет не задано', 11, C.faint, 'regular');
     }
-    w.url = addRun; // малий віджет — один тап одразу додає витрату
     return w;
   }
 
@@ -297,6 +302,15 @@ function build(data, family, who) {
 
 /* ---------- Запуск ---------- */
 const who = USERS.includes((args.widgetParameter || '').trim()) ? args.widgetParameter.trim() : null;
+const q = args.queryParameters || {};
+
+if (q.open && !config.runsInWidget && !config.runsInAccessoryWidget) {
+  // Відкрито тапом по віджету: показуємо додаток, а після закриття оновлюємо дані віджета
+  const wv = new WebView();
+  await wv.loadURL(APP_URL + '?in=scriptable' + (q.add ? '&add=1' : ''));
+  await wv.present(true);
+  await loadData();
+} else {
 const data = await loadData();
 if (config.runsInWidget || config.runsInAccessoryWidget) {
   Script.setWidget(build(data, config.widgetFamily, who));
@@ -312,5 +326,6 @@ if (config.runsInWidget || config.runsInAccessoryWidget) {
     const wd = build(data, fam, who);
     await [wd.presentSmall, wd.presentMedium, wd.presentLarge][i].call(wd);
   }
+}
 }
 Script.complete();

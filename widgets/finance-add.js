@@ -69,6 +69,19 @@ async function insert(row) {
   return false;
 }
 
+// Дописуємо витрату в кеш віджета — він перемалюється з новою сумою, не чекаючи бази
+function addToWidgetCache(row) {
+  const p = fm.joinPath(fm.documentsDirectory(), 'finance-widget-cache.json');
+  if (!fm.fileExists(p)) return;
+  try {
+    const c = JSON.parse(fm.readString(p));
+    const d = new Date(row.date);
+    if (c.month !== d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')) return;
+    c.rows.unshift(row);
+    fm.writeString(p, JSON.stringify(c));
+  } catch (e) {}
+}
+
 function parseAmount(s) {
   let v = String(s || '').replace(/[\s₴]/g, '');
   if (/,\d{1,2}$/.test(v)) v = v.replace(/\./g, '').replace(',', '.'); else v = v.replace(/,/g, '');
@@ -142,10 +155,12 @@ async function main() {
   c.addCancelAction('Скасувати');
   if (await c.presentAlert() === -1) return;
 
-  const ok = await insert({
+  const row = {
     date: new Date().toISOString(), who, categoria: cat, subcategory: sub || null,
     sum: Math.round(amount * 100) / 100, comm: c.textFieldValue(0).trim() || null,
-  });
+  };
+  const ok = await insert(row);
+  addToWidgetCache(row); // віджет одразу покаже нову суму, навіть без інтернету
 
   const n = new Notification();
   n.title = ok ? '✓ Збережено' : '⏳ Збережено офлайн';
