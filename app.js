@@ -1250,7 +1250,8 @@ function renderSettings() {
         <li>Затисни екран «Додому» → «+» → Scriptable → обери розмір → торкнись віджета → Script: <b>Фінанси</b></li>
       </ol>
       <div class="row-btns"><button onclick="copyWidget('finance-widget.js', this)">📋 Копіювати віджет</button><button onclick="copyWidget('finance-add.js', this)">📋 Копіювати «+»</button></div>
-      <p class="hint" style="margin-top:10px">Розміри: малий (тап — одразу додати витрату), середній (бюджет усіх гаманців + кнопка «+»), великий (ще топ категорій і останні записи). Для екрана блокування теж є. У полі <b>Parameter</b> віджета можна вписати «Влад» чи «Таня», щоб бачити лише своє і спільне.</p>
+      <p class="hint" style="margin-top:10px">Тап по віджету відкриває цей додаток на весь екран; після закриття віджет одразу оновлюється. Кнопка «+» на середньому і великому віджеті додає витрату за 3 тапи, без відкриття сайту. Якщо внести витрату звідси, тапнувши по віджету, або через «+», віджет оновиться за кілька секунд; з Safari чи з іконки на «Додому» — протягом ~5–15 хв.</p>
+      <p class="hint">Розміри: малий, середній (бюджет усіх гаманців + «+»), великий (ще топ категорій і останні записи), а також для екрана блокування. У полі <b>Parameter</b> віджета можна вписати «Влад» чи «Таня», щоб бачити лише своє і спільне.</p>
       <p class="hint">Бонус: у додатку «Команди» створи команду з дією Scriptable «Run Script» → «Фінанси +» і назви її «Витрата» — тоді працюватиме «Сірі, витрата», кнопка «Дія» та подвійний тап по задній кришці.</p>
     </div>
     <div class="card">
@@ -1446,7 +1447,10 @@ function boot() {
   openWho(false);
 
   const p = new URLSearchParams(location.search);
-  if (p.has('add')) { history.replaceState(null, '', location.pathname); openAdd(); }
+  // Відкрито з віджета Scriptable — це вже «додаток», банер установки не потрібен
+  if (p.get('in') === 'scriptable') { store.set(LS.noInstall, true); renderActive(); }
+  if (p.has('add') || p.has('in')) history.replaceState(null, '', location.pathname);
+  if (p.has('add')) openAdd();
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
