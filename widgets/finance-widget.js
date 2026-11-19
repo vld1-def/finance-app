@@ -163,7 +163,7 @@ function txt(stack, s, size, color = C.text, weight = 'medium') {
 function walletColor(w, pace) {
   if (!w.planned) return new Color('#ffffff', 0.25);
   const p = w.spent / w.planned;
-  return p > 1 ? C.bad : p > pace + 0.1 ? C.warn : new Color(w.color);
+  return p > 1 ? C.bad : p > pace + 0.1 ? C.warn : new Color(w.color || '#8b7cf6');
 }
 function walletRow(parent, w, R, width) {
   const s = parent.addStack(); s.layoutVertically();
@@ -245,7 +245,7 @@ function build(data, family, who) {
     w.addSpacer();
     if (planned) {
       txt(w, left >= 0 ? `лишилось ${short(left)}` : `перевищено ${short(-left)}`, 12, left >= 0 ? C.good : C.bad, 'bold');
-      const img = w.addImage(bar(120, wSpent / planned, walletColor({ planned, spent: wSpent }, R.pace), R.pace)); img.imageSize = new Size(120, 10);
+      const img = w.addImage(bar(120, wSpent / planned, walletColor({ planned, spent: wSpent, color: '#8b7cf6' }, R.pace), R.pace)); img.imageSize = new Size(120, 10);
       txt(w, `≈ ${short(perDay)} на день`, 10, C.faint, 'regular');
     } else {
       txt(w, 'бюджет не задано', 11, C.faint, 'regular');
