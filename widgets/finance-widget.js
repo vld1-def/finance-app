@@ -61,9 +61,10 @@ async function loadData() {
     try { await flushQueue(); } catch (e) {}
     const [rows, budgets] = await Promise.all([
       api(`expenses?select=who,categoria,subcategory,sum,date,comm&date=gte.${encodeURIComponent(from)}&date=lt.${encodeURIComponent(to)}&order=date.desc&limit=2000`),
-      api(`budgets?select=month,data&month=eq.${month}`),
+      api(`budgets?select=month,data&month=in.(${month},_savings)`),
     ]);
-    const data = { month, rows, budget: budgets[0] ? budgets[0].data : null, at: Date.now() };
+    const bm = budgets.find(b => b.month === month), sv = budgets.find(b => b.month === '_savings');
+    const data = { month, rows, budget: bm ? bm.data : null, savings: sv ? sv.data : null, at: Date.now() };
     fm.writeString(cachePath, JSON.stringify(data));
     return data;
   } catch (e) {
@@ -123,9 +124,12 @@ function report(data) {
     k = bestIdx(b.people[e.u].items, e);
     if (k >= 0) pp[e.u].spent[k] += e.a; else pp[e.u].outside += e.a;
   });
+  // Статті «відкласти на ціль»: виконання = відкладене на цю ціль за місяць
+  const svTx = (data.savings && data.savings.tx) || [];
+  const saved = (goal, key) => sum(svTx.filter(t => t.goal === goal && t.amount > 0 && String(t.date).slice(0, 7) === data.month && (key === 'shared' || t.who === key)), t => t.amount);
   const wallet = (key, name, color, items, spentArr, outside) => {
     const planned = sum(items, x => num(x.amount));
-    const spent = outside + sum(items.map((x, k) => x.cat ? spentArr[k] : (x.done ? num(x.amount) : 0)));
+    const spent = outside + sum(items.map((x, k) => x.goal ? saved(x.goal, key) : x.cat ? spentArr[k] : (x.done ? num(x.amount) : 0)));
     const flexLeft = sum(items.map((x, k) => x.cat ? num(x.amount) - spentArr[k] : 0)) - outside;
     return { key, name, color, planned, spent, left: planned - spent, perDay: Math.max(0, flexLeft) / daysLeft };
   };
