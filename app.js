@@ -1059,17 +1059,6 @@ function renderAdd() {
   const a = S.add;
   $('aWho').innerHTML = USERS.map(u => `<button class="${a.u === u ? 'on' : ''}" onclick="addWho('${u}')">${u}</button>`).join('');
 
-  // Часті комбінації категорія+підкатегорія цієї людини
-  const st = usageStats(90, a.u);
-  const combos = Object.entries(st.combo).sort((x, y) => y[1] - x[1]).slice(0, 10)
-    .map(([k]) => k.split('\u0001')).filter(([c]) => S.cats.some(x => x.name === c && !x.hidden));
-  S._quick = combos;
-  $('aQuickWrap').hidden = !combos.length;
-  $('aQuick').innerHTML = combos.map(([c, sc], i) => {
-    const p = catParts(c);
-    return `<button class="chip ${a.c === c && a.sc === sc ? 'on' : ''}" onclick="pickQuick(${i})">${p.e} ${esc(sc || p.t)}</button>`;
-  }).join('');
-
   // Категорії: найчастіші — першими
   const all = usageStats(120).cat;
   const cats = S.cats.filter(c => !c.hidden).sort((x, y) => (all[y.name] || 0) - (all[x.name] || 0) || x.name.localeCompare(y.name));
@@ -1099,10 +1088,10 @@ function renderAddSubs() {
 
 function renderAddDate() {
   const a = S.add, t = todayISO();
-  const y = isoDay(new Date(Date.now() - 864e5)), y2 = isoDay(new Date(Date.now() - 2 * 864e5));
-  const other = ![t, y, y2].includes(a.iso);
+  const y = isoDay(new Date(Date.now() - 864e5));
+  const other = ![t, y].includes(a.iso);
   const otherLbl = other ? new Date(a.iso + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }) : '📅 Інша';
-  $('aDate').innerHTML = [[t, 'Сьогодні'], [y, 'Вчора'], [y2, 'Позавчора']].map(([v, l]) =>
+  $('aDate').innerHTML = [[t, 'Сьогодні'], [y, 'Вчора']].map(([v, l]) =>
     `<button class="chip ${a.iso === v ? 'on' : ''}" onclick="addDate('${v}')">${l}</button>`).join('')
     + `<label class="chip date-chip ${other ? 'on' : ''}">${otherLbl}<input type="date" value="${a.iso}" max="${t}" onchange="addDate(this.value)" aria-label="Інша дата"></label>`;
 }
@@ -1127,11 +1116,6 @@ function pickCat(i) {
   vibrate(); renderAdd();
 }
 function pickSub(i) { const sc = S._addSubs[i]; S.add.sc = S.add.sc === sc ? '' : sc; vibrate(); renderAddSubs(); updateAddSave(); }
-function pickQuick(i) {
-  const [c, sc] = S._quick[i];
-  S.add.c = c; S.add.sc = sc; vibrate(); renderAdd();
-  if (!(parseMoney($('aAmount').value) > 0)) $('aAmount').focus();
-}
 async function addSubInline() {
   const cat = S.add.c;
   const name = await ask({ title: 'Нова підкатегорія', text: catParts(cat).t, value: '' });
