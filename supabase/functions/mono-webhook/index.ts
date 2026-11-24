@@ -10,8 +10,8 @@ const SB_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ok = (body: unknown = { ok: true }) =>
   new Response(JSON.stringify(body), { headers: { 'Content-Type': 'application/json' } });
 
-// Поповнення/зняття з «Банок» і перекази між своїми рахунками — це не витрати
-const SKIP = /(на банку|з банки|поповнення банки|на свою картку|між своїми|з білої картки|з чорної картки|на білу картку|на чорну картку)/i;
+// Скарбничка (округлення), поповнення/зняття з «Банок» і перекази між своїми рахунками — це не витрати
+const SKIP = /(скарбничк|на банку|з банки|поповнення банки|на свою картку|між своїми|з білої картки|з чорної картки|на білу картку|на чорну картку)/i;
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return ok(); // перевірка від Моно
@@ -31,7 +31,10 @@ Deno.serve(async (req) => {
   if (!(kop < 0)) return ok({ ok: true, skipped: 'income' });
   if (SKIP.test(it.description || '')) return ok({ ok: true, skipped: 'own transfer' });
 
-  const comm = [it.description, it.currencyCode !== 980 ? `${Math.abs(it.operationAmount) / 100} ${it.currencyCode}` : '', it.comment]
+  // «Київстар\n+380…» → продавець «Київстар», решта — в коментар
+  const lines = String(it.description || '').split(/\n+/).map((x: string) => x.trim()).filter(Boolean);
+  const merchant = lines[0] || null;
+  const comm = [lines.join(' · '), it.currencyCode !== 980 ? `${Math.abs(it.operationAmount) / 100} ${it.currencyCode}` : '', it.comment]
     .filter(Boolean).join(' · ') || null;
 
   const r = await fetch(`${SB_URL}/rest/v1/rpc/auto_expense`, {
@@ -40,7 +43,7 @@ Deno.serve(async (req) => {
     body: JSON.stringify({
       p_who: who,
       p_sum: Math.abs(kop) / 100,
-      p_merchant: it.description || null,
+      p_merchant: merchant,
       p_source: 'mono',
       p_ext_id: 'mono:' + it.id,
       p_mcc: it.mcc || null,
