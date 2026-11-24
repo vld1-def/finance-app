@@ -1,7 +1,7 @@
 // Service worker: додаток відкривається без інтернету.
 // Свої файли — спершу з мережі (щоб оновлення приходили одразу), без мережі — з кешу.
 // Бібліотеки з CDN — з кешу (версії зафіксовані). Запити до Supabase не кешуються.
-const VERSION = 'fin-v5';
+const VERSION = 'fin-v6';
 const SHELL = ['./', './index.html', './app.css', './app.js', './manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png'];
 const CDN = [
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js',

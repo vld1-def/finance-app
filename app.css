@@ -339,3 +339,19 @@ textarea.inp { font-family: ui-monospace, Menlo, monospace; font-size: 13px; min
   .cat-btn:hover, .chip:hover, .row-btns button:hover { background: rgba(255,255,255,.1); }
   .chip.on:hover { background: var(--text); }
 }
+
+/* ===== Джерела автоматичних витрат (Apple Pay / monobank) ===== */
+.src { display: inline-flex; align-items: center; gap: 2px; height: 15px; padding: 0 5px; margin-right: 5px; border-radius: 5px;
+  font: 700 9.5px/1 -apple-system, system-ui, sans-serif; font-style: normal; letter-spacing: .01em; vertical-align: 1px; }
+.src svg { width: 8px; height: 10px; margin-top: -1px; }
+.src-ap { background: #fff; color: #000; }
+.src-mono { background: #000; color: #fff; border: 1px solid rgba(255,255,255,.28); letter-spacing: .02em; }
+.tx-mer { color: var(--muted); font-weight: 600; }
+.tx-a small.rv-dot { display: block; text-align: right; font-size: 10px; font-weight: 600; color: #fbbf24; margin-top: 1px; }
+.tx.rv .tx-ic { box-shadow: 0 0 0 1.5px rgba(251,191,36,.55); }
+.src-info { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+.src-info .src { height: 18px; font-size: 11px; padding: 0 6px; }
+.src-info .src svg { width: 10px; height: 12px; }
+.src-info b { color: var(--text); }
+.banner.auto span { cursor: pointer; }
+.banner.auto button { width: auto; padding: 0 10px; font-weight: 700; white-space: nowrap; }
