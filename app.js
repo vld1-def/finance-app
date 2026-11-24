@@ -29,7 +29,7 @@ const S = {
   loadedAt: 0, sync: 'busy',
   tab: 'home', mF: '', openCat: '', homeWho: 'All',
   me: store.get(LS.me, ''),
-  hist: { u: 'All', c: 'All', sc: 'All', day: 'All', q: '' },
+  hist: { u: 'All', c: 'All', sc: 'All', day: 'All', q: '', rv: false },
   an: { 'Влад': true, 'Таня': true },
   add: { u: '', c: '', sc: '', iso: '' }, addMode: 'one', bulk: [],
   edit: null,
@@ -139,6 +139,7 @@ function mapRow(r) {
   return {
     id: r._q || r.id, u: r.who, c: r.categoria || '—', sc: r.subcategory || '', a: parseFloat(r.sum) || 0,
     cm: r.comm || '', ts: dt.getTime(), iso, mId: iso.slice(0, 7), pending: !!r._q,
+    src: r.source || '', mer: r.merchant || '', mcc: r.mcc || null, rv: !!r.review,
   };
 }
 function rebuild() {
@@ -154,7 +155,7 @@ async function fetchAllExpenses() {
   let all = [], from = 0;
   for (;;) {
     const { data, error } = await sb.from('expenses')
-      .select('id,date,created_at,who,categoria,subcategory,sum,comm')
+      .select('id,date,created_at,who,categoria,subcategory,sum,comm,source,merchant,mcc,review')
       .order('date', { ascending: false }).order('id', { ascending: false })
       .range(from, from + step - 1);
     if (error) throw error;
@@ -326,6 +327,7 @@ function renderHome() {
     <header class="top"><h1>Огляд</h1><div class="top-r">${syncHTML()}<button class="icon-btn" onclick="go('settings')" aria-label="Налаштування">⚙︎</button></div></header>
     ${showInstall ? `<div class="banner"><span>📲 Встанови як додаток: ${isIOS() ? 'у Safari «Поділитися» → «На екран „Додому“»' : 'меню браузера → «Встановити додаток»'}</span><button onclick="hideInstall()" aria-label="Сховати">✕</button></div>` : ''}
     ${S.queue.length ? `<div class="banner"><span>⏳ ${S.queue.length} ${S.queue.length === 1 ? 'запис чекає' : 'записів чекають'} інтернету — відправляться автоматично</span><button onclick="loadData()">↻</button></div>` : ''}
+    ${reviewRows().length ? `<div class="banner auto"><span onclick="showReview()">⚡ ${reviewRows().length} ${reviewRows().length === 1 ? 'автоматична витрата' : 'автоматичних витрат'} — перевір категорії</span><button onclick="confirmAllAuto()">Усе вірно</button></div>` : ''}
     ${monthNavHTML()}
     <div class="card hero">
       <div class="label">Витрачено${S.homeWho !== 'All' ? ' · ' + S.homeWho : ''}</div>
@@ -361,15 +363,39 @@ function subBreakdownHTML(rows, cat) {
   return `<div class="cat-subs">${list.map(([n, v]) => `<div class="cat-sub"><span>${esc(n)}</span><b>${money(v)}</b></div>`).join('')}</div>`;
 }
 
+/* ---------- Джерела автоматичних витрат ---------- */
+const APPLE_SVG = '<svg viewBox="0 0 814 1000" aria-hidden="true"><path fill="currentColor" d="M788 341c-6 4-108 62-108 190 0 149 131 201 135 203-1 3-21 72-69 142-43 62-88 124-156 124s-86-40-165-40c-77 0-104 41-166 41s-106-57-156-127C45 792 0 671 0 556c0-185 120-283 239-283 63 0 115 41 155 41 38 0 97-44 168-44 27 0 124 2 188 71zM554 168c30-35 51-84 51-133 0-7-1-14-2-19-48 2-106 32-140 72-27 31-53 80-53 130 0 8 1 15 2 18 3 1 9 2 14 2 43 0 97-29 128-70z"/></svg>';
+const SRC_NAME = { applepay: 'Apple Pay', mono: 'monobank', 'applepay+mono': 'Apple Pay + monobank' };
+function srcBadges(src) {
+  if (!src) return '';
+  let h = '';
+  if (src.includes('applepay')) h += `<i class="src src-ap" title="Apple Pay">${APPLE_SVG}Pay</i>`;
+  if (src.includes('mono')) h += `<i class="src src-mono" title="monobank">mono</i>`;
+  return h;
+}
+
 function txHTML(i) {
   const p = catParts(i.c);
   const time = new Date(i.ts).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
-  return `<div class="tx" onclick="openEdit('${i.id}')">
+  const note = i.cm && i.cm !== i.mer ? i.cm : '';
+  return `<div class="tx${i.rv ? ' rv' : ''}" onclick="openEdit('${i.id}')">
     <div class="tx-ic" style="--c:${UCOLOR[i.u] || '#888'}">${p.e}</div>
     <div class="tx-m"><div class="tx-t">${esc(p.t)}${i.sc ? `<span> · ${esc(i.sc)}</span>` : ''}</div>
-      <div class="tx-s">${i.pending ? '⏳ ' : ''}${esc(i.u)} · ${time}${i.cm ? ' · ' + esc(i.cm) : ''}</div></div>
-    <div class="tx-a">${money(i.a)}</div></div>`;
+      <div class="tx-s">${i.pending ? '⏳ ' : ''}${srcBadges(i.src)}${i.mer ? `<b class="tx-mer">${esc(i.mer)}</b> · ` : ''}${esc(i.u)} · ${time}${note ? ' · ' + esc(note) : ''}</div></div>
+    <div class="tx-a">${money(i.a)}${i.rv ? '<small class="rv-dot">перевір</small>' : ''}</div></div>`;
 }
+
+// Автоматичні витрати, які ще ніхто не переглянув
+const reviewRows = () => S.d.filter(i => i.rv && !i.pending);
+async function confirmAllAuto() {
+  const ids = reviewRows().map(i => i.id);
+  if (!ids.length || !sb) return;
+  const { error } = await sb.from('expenses').update({ review: false }).in('id', ids);
+  if (error) return toast(isNetErr(error) ? 'Немає інтернету' : error.message);
+  S.raw.forEach(r => { if (ids.includes(r.id)) r.review = false; });
+  saveCache(); rebuild(); if (S.hist.rv) S.hist.rv = false; renderActive(); vibrate(); toast('Позначено як перевірені');
+}
+function showReview() { S.hist = { u: 'All', c: 'All', sc: 'All', day: 'All', q: '', rv: true }; go('history'); }
 
 function hideInstall() { store.set(LS.noInstall, true); renderHome(); }
 
@@ -1033,17 +1059,6 @@ function renderAdd() {
   const a = S.add;
   $('aWho').innerHTML = USERS.map(u => `<button class="${a.u === u ? 'on' : ''}" onclick="addWho('${u}')">${u}</button>`).join('');
 
-  // Часті комбінації категорія+підкатегорія цієї людини
-  const st = usageStats(90, a.u);
-  const combos = Object.entries(st.combo).sort((x, y) => y[1] - x[1]).slice(0, 10)
-    .map(([k]) => k.split('\u0001')).filter(([c]) => S.cats.some(x => x.name === c && !x.hidden));
-  S._quick = combos;
-  $('aQuickWrap').hidden = !combos.length;
-  $('aQuick').innerHTML = combos.map(([c, sc], i) => {
-    const p = catParts(c);
-    return `<button class="chip ${a.c === c && a.sc === sc ? 'on' : ''}" onclick="pickQuick(${i})">${p.e} ${esc(sc || p.t)}</button>`;
-  }).join('');
-
   // Категорії: найчастіші — першими
   const all = usageStats(120).cat;
   const cats = S.cats.filter(c => !c.hidden).sort((x, y) => (all[y.name] || 0) - (all[x.name] || 0) || x.name.localeCompare(y.name));
@@ -1073,10 +1088,10 @@ function renderAddSubs() {
 
 function renderAddDate() {
   const a = S.add, t = todayISO();
-  const y = isoDay(new Date(Date.now() - 864e5)), y2 = isoDay(new Date(Date.now() - 2 * 864e5));
-  const other = ![t, y, y2].includes(a.iso);
+  const y = isoDay(new Date(Date.now() - 864e5));
+  const other = ![t, y].includes(a.iso);
   const otherLbl = other ? new Date(a.iso + 'T00:00:00').toLocaleDateString('uk-UA', { day: 'numeric', month: 'short' }) : '📅 Інша';
-  $('aDate').innerHTML = [[t, 'Сьогодні'], [y, 'Вчора'], [y2, 'Позавчора']].map(([v, l]) =>
+  $('aDate').innerHTML = [[t, 'Сьогодні'], [y, 'Вчора']].map(([v, l]) =>
     `<button class="chip ${a.iso === v ? 'on' : ''}" onclick="addDate('${v}')">${l}</button>`).join('')
     + `<label class="chip date-chip ${other ? 'on' : ''}">${otherLbl}<input type="date" value="${a.iso}" max="${t}" onchange="addDate(this.value)" aria-label="Інша дата"></label>`;
 }
@@ -1101,11 +1116,6 @@ function pickCat(i) {
   vibrate(); renderAdd();
 }
 function pickSub(i) { const sc = S._addSubs[i]; S.add.sc = S.add.sc === sc ? '' : sc; vibrate(); renderAddSubs(); updateAddSave(); }
-function pickQuick(i) {
-  const [c, sc] = S._quick[i];
-  S.add.c = c; S.add.sc = sc; vibrate(); renderAdd();
-  if (!(parseMoney($('aAmount').value) > 0)) $('aAmount').focus();
-}
 async function addSubInline() {
   const cat = S.add.c;
   const name = await ask({ title: 'Нова підкатегорія', text: catParts(cat).t, value: '' });
@@ -1206,7 +1216,7 @@ async function bulkSave() {
 function openEdit(id) {
   const it = S.d.find(x => String(x.id) === String(id));
   if (!it) return;
-  S.edit = { id: it.id, u: it.u, iso: it.iso, ts: it.ts, c: it.c, sc: it.sc, pending: it.pending };
+  S.edit = { id: it.id, u: it.u, iso: it.iso, ts: it.ts, c: it.c, sc: it.sc, pending: it.pending, src: it.src, mer: it.mer, mcc: it.mcc, rv: it.rv };
   renderEdit(it);
   $('sheet-edit').classList.add('open');
 }
@@ -1214,6 +1224,8 @@ function renderEdit(it) {
   const e = S.edit;
   const subs = subOptions(e.c, e.sc, '— без підкатегорії —');
   $('editBody').innerHTML = `
+    ${e.src ? `<div class="src-info">${srcBadges(e.src)}<span>${esc(SRC_NAME[e.src] || e.src)}${e.mer ? ' · <b>' + esc(e.mer) + '</b>' : ''}${e.mcc ? ' · MCC ' + e.mcc : ''}</span></div>
+      ${e.rv ? `<p class="hint" style="margin:-4px 0 12px">⚡ Категорію підібрано автоматично. Виправ, якщо треба, і натисни «Зберегти»: наступного разу для «${esc(e.mer || 'цього продавця')}» вона підставиться сама.</p>` : ''}` : ''}
     <div class="seg" style="margin-bottom:12px">${USERS.map(u => `<button class="${e.u === u ? 'on' : ''}" onclick="editWho('${u}')">${u}</button>`).join('')}</div>
     <div class="filters">
       <div class="two"><input class="inp num" id="eAmount" inputmode="decimal" value="${it ? it.a : esc($('eAmount').value)}" placeholder="Сума" aria-label="Сума">
@@ -1237,6 +1249,7 @@ async function saveEdit() {
   const newIso = $('eDate').value || e.iso;
   const date = newIso === e.iso ? new Date(e.ts).toISOString() : new Date(newIso + 'T12:00:00').toISOString();
   const patch = { date, who: e.u, categoria: $('eCat').value, subcategory: $('eSub').value || null, sum: Math.round(amount * 100) / 100, comm: $('eComment').value.trim() || null };
+  if (e.src && !e.pending) patch.review = false;
   if (e.pending) {
     const q = S.queue.find(x => x._q === e.id); Object.assign(q, patch); store.set(LS.queue, S.queue);
   } else {
@@ -1265,7 +1278,7 @@ async function deleteEdit() {
 function setHist(k, v) {
   S.hist[k] = v;
   if (k === 'c') S.hist.sc = 'All';
-  if (k !== 'day' && k !== 'q') S.hist.day = 'All';
+  if (k !== 'day' && k !== 'q' && k !== 'rv') S.hist.day = 'All';
   renderHistory();
 }
 let histSearchT;
@@ -1274,12 +1287,12 @@ function histSearch(v) { clearTimeout(histSearchT); histSearchT = setTimeout(() 
 function histRows() {
   const h = S.hist, q = h.q.trim().toLowerCase();
   // З пошуком — шукаємо за весь час, без пошуку — у вибраному місяці
-  const base = q ? S.d : S.d.filter(i => i.mId === S.mF);
+  const base = h.rv ? reviewRows() : q ? S.d : S.d.filter(i => i.mId === S.mF);
   return base.filter(i =>
     (h.u === 'All' || i.u === h.u) && (h.c === 'All' || i.c === h.c) &&
     (h.sc === 'All' || (h.sc === '__none__' ? !i.sc : i.sc === h.sc)) &&
     (q || h.day === 'All' || i.iso.slice(8) === h.day) &&
-    (!q || (i.c + ' ' + i.sc + ' ' + i.cm + ' ' + i.a).toLowerCase().includes(q)));
+    (!q || (i.c + ' ' + i.sc + ' ' + i.cm + ' ' + i.mer + ' ' + i.a).toLowerCase().includes(q)));
 }
 
 function renderHistory() {
@@ -1297,7 +1310,7 @@ function renderHistory() {
     ${monthNavHTML()}
     <div class="card filters">
       <input class="inp" type="search" placeholder="🔍 Пошук: кава, Таврія, 450…" value="${esc(h.q)}" oninput="histSearch(this.value)" autocomplete="off">
-      <div class="chips">${['All', ...USERS].map(u => `<button class="chip ${h.u === u ? 'on' : ''}" onclick="setHist('u','${u}')">${u === 'All' ? 'Усі' : u}</button>`).join('')}</div>
+      <div class="chips">${['All', ...USERS].map(u => `<button class="chip ${h.u === u ? 'on' : ''}" onclick="setHist('u','${u}')">${u === 'All' ? 'Усі' : u}</button>`).join('')}${h.rv || reviewRows().length ? `<button class="chip ${h.rv ? 'on' : ''}" onclick="setHist('rv', ${!h.rv})">⚡ Перевірити${reviewRows().length ? ' ' + reviewRows().length : ''}</button>` : ''}</div>
       <div class="two">
         <select class="sel" onchange="setHist('c', this.value)" aria-label="Категорія"><option value="All">Усі категорії</option>${cats.map(c => `<option value="${esc(c)}" ${h.c === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
         <select class="sel" onchange="setHist('sc', this.value)" ${subs.length || hasNone ? '' : 'disabled'} aria-label="Підкатегорія"><option value="All">Усі підкатегорії</option>
@@ -1313,12 +1326,12 @@ function renderHistory() {
 function renderHistList() {
   const rows = histRows(), box = $('hList');
   if (!box) return;
-  if (!rows.length) { box.innerHTML = `<p class="empty">${S.hist.q ? 'Нічого не знайдено' : 'Немає витрат'}</p>`; return; }
+  if (!rows.length) { box.innerHTML = `<p class="empty">${S.hist.rv ? 'Усі автоматичні витрати перевірені ✓' : S.hist.q ? 'Нічого не знайдено' : 'Немає витрат'}</p>`; return; }
   const byDay = {};
   rows.forEach(i => (byDay[i.iso] = byDay[i.iso] || []).push(i));
   const days = Object.keys(byDay).sort().reverse();
   const shown = days.slice(0, S.hist.q ? 60 : 62);
-  box.innerHTML = `<p class="muted small" style="margin:0 4px 4px">${rows.length} ${rows.length === 1 ? 'запис' : 'записів'} · ${money(sum(rows, i => i.a))}${S.hist.q ? ' · за весь час' : ''}</p>`
+  box.innerHTML = `<p class="muted small" style="margin:0 4px 4px">${rows.length} ${rows.length === 1 ? 'запис' : 'записів'} · ${money(sum(rows, i => i.a))}${S.hist.q || S.hist.rv ? ' · за весь час' : ''}${S.hist.rv ? ` · <button class="link" onclick="confirmAllAuto()">Усе вірно ✓</button>` : ''}</p>`
     + shown.map(iso => `<div class="day-h"><span>${dayLabel(iso)}</span><span class="num">${money(sum(byDay[iso], i => i.a))}</span></div>
       <div class="card day-card">${byDay[iso].map(txHTML).join('')}</div>`).join('');
 }
